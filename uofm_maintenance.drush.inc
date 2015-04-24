@@ -3,6 +3,10 @@
  * @file
  * Drush scripts and functions
  */
+
+/**
+ * Implements hook_drush_command().
+ */
 function uofm_maintenance_drush_command() {
   $items = array();
 
@@ -173,8 +177,10 @@ function uofm_maintenance_drush_command() {
 /**
  * Loads PIDs to a queue for processing.
  *
- * @param String - the name of the queue to add these items to.
- * @param boolean - Filter the string to remove objects in the Solr index.
+ * @param string $queue
+ *   the name of the queue to add these items to.
+ * @param bool $force
+ *   whether to filter PIDs to remove objects already in the Solr index.
  */
 function uofm_maintenance_preprocess($queue, $force) {
   module_load_include('inc', 'islandora', 'includes/utilities');
@@ -219,7 +225,7 @@ function uofm_maintenance_preprocess($queue, $force) {
     if ($results == -8) {
       drush_set_error("File does not exist.");
     }
-    else if ($results == -9) {
+    elseif ($results == -9) {
       drush_set_error("File cannot be read.");
     }
   }
@@ -246,6 +252,15 @@ function uofm_maintenance_preprocess($queue, $force) {
 
 /**
  * Pull from the queue and send to worker.
+ *
+ * @param string $worker_fn
+ *   name of the function to pass the queue data to
+ * @param string $queue
+ *   name of the queue to read items from
+ * @param string $timer
+ *   name of the timer to use when running
+ * @param int $lease
+ *   length of time to claim each item for
  */
 function uofm_maintenance_run($worker_fn, $queue, $timer, $lease = 100) {
   $timeout = drush_get_option('timeout', ini_get('max_execution_time'));

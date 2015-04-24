@@ -6,10 +6,14 @@
 
 /**
  * Load/query a list, file, Sparql query or single PID and return a list.
- * @param array - with keys
+ *
+ * @param array $data
+ *   with keys
  *   "type" = ("single", "list", "file" or "query") and
  *   "value" which is a PID for single, a list for list, etc.
- * @return array of PIDs
+ *
+ * @return
+ *   array of PIDs
  */
 function uofm_maintenance_load_pids(array $data) {
 
@@ -19,6 +23,7 @@ function uofm_maintenance_load_pids(array $data) {
       case 'single':
         $results[] = $data['value'];
         break;
+
       case 'list':
         $list = $data['value'];
         $tmp_res = explode(',', $list);
@@ -28,12 +33,13 @@ function uofm_maintenance_load_pids(array $data) {
           }
         }
         break;
+
       case 'file':
         if (file_exists($data['value'])) {
           $fp = @fopen($data['value'], 'r');
           if (!$fp) {
-            // Unable to open file
-            return -9; 
+            // Unable to open file.
+            return -9;
           }
           while (!feof($fp)) {
             $line = trim(fgets($fp, 4096));
@@ -43,10 +49,11 @@ function uofm_maintenance_load_pids(array $data) {
           }
         }
         else {
-          // File does not exist
+          // File does not exist.
           return -8;
         }
         break;
+
       case 'query':
         $query_param = $data['value'];
         $results = uofm_maintenance_sparql_query($query_param);
@@ -117,7 +124,7 @@ function uofm_maintenance_batch_index_filter(array $items) {
   $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
   $solr->setCreateDocuments(0);
 
-  // Make a long string of colon escaped PIDs
+  // Make a long string of colon escaped PIDs.
   $query_pids = str_replace(':', '\\:', implode($items, " "));
   // Search for all the possible PIDs.
   $solr_query = "+PID:($query_pids)";

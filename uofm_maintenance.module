@@ -54,17 +54,17 @@ function uofm_maintenance_fix_tiff_worker($object) {
   if (isset($obj['OBJ']) && $obj['OBJ']->mimetype == "image/tif") {
     $obj['OBJ']->mimetype = "image/tiff";
   }
-  else if (isset($obj['TIFF']) && $obj['TIFF']->mimetype == "image/tif") {
+  if (isset($obj['TIFF']) && $obj['TIFF']->mimetype == "image/tif") {
     $obj['TIFF']->mimetype = "image/tiff";
   }
   return TRUE;
 }
 
 /**
- * Regenerate JP2 derivative from OBJ/TIFF
+ * Regenerate JP2 derivative from OBJ/TIFF.
  */
 function uofm_maintenance_regen_jp2_worker($object) {
-    $obj = FALSE;
+  $obj = FALSE;
   if (is_string($object)) {
     module_load_include('inc', 'islandora', 'includes/utilities');
     if (islandora_is_valid_pid($object)) {
@@ -77,8 +77,8 @@ function uofm_maintenance_regen_jp2_worker($object) {
   if (isset($obj['OBJ']) || isset($obj['TIFF'])) {
     if ((isset($obj['OBJ']) && isset($obj['JP2']) && ($obj['OBJ']->size * 0.01) > $obj['JP2']->size) ||
       (isset($obj['TIFF']) && isset($obj['JP2']) && ($obj['TIFF']->size * 0.01) > $obj['JP2']->size)) {
-        module_load_include('inc', 'islandora_large_image', 'includes/derivatives.inc');
-        islandora_large_image_create_jp2_derivative($obj);
+      module_load_include('inc', 'islandora_large_image', 'includes/derivatives.inc');
+      islandora_large_image_create_jp2_derivative($obj);
     }
   }
   return TRUE;
@@ -138,5 +138,5 @@ function uofm_maintenance_batch_index_worker($object) {
     if ($res === FALSE) {
       watchdog('uofm_batch_index', 'Error re-indexing @o', array('@o' => $object));
     }
-  } 
+  }
 }
