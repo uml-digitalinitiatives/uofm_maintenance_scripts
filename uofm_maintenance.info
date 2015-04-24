@@ -1,0 +1,6 @@
+name = "UofM Maintenance Scripts"
+description = "A variety of drush scripts for fixing one-off issues."
+dependencies[] = islandora
+package = Islandora Local Customization
+version = 7.x-dev
+core = 7.x
