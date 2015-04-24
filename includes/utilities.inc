@@ -12,7 +12,7 @@
  *   "type" = ("single", "list", "file" or "query") and
  *   "value" which is a PID for single, a list for list, etc.
  *
- * @return
+ * @return array
  *   array of PIDs
  */
 function uofm_maintenance_load_pids(array $data) {
@@ -65,6 +65,12 @@ function uofm_maintenance_load_pids(array $data) {
 
 /**
  * Perform our Sparql query and return an array of PIDs.
+ *
+ * @param string $where
+ *   the where clause of a sparql query that defines what ?object will be.
+ *
+ * @return array
+ *   an array of PIDs.
  */
 function uofm_maintenance_sparql_query($where) {
   drupal_static_reset('islandora_get_tuque_connection');
@@ -87,6 +93,14 @@ function uofm_maintenance_sparql_query($where) {
 
 /**
  * Recurse down to the children.
+ *
+ * @param array $pids
+ *   array of pids to retrieve the children for.
+ * @param array $results
+ *   array of previous results to add new children to
+ *
+ * @return array
+ *   array of pids
  */
 function uofm_maintenance_recursive_query($pids, $results = array()) {
   foreach ($pids as $parent) {
@@ -101,6 +115,12 @@ function uofm_maintenance_recursive_query($pids, $results = array()) {
 
 /**
  * Query for the children of an object.
+ *
+ * @param string $parent
+ *   the pid of the parent to find children for.
+ *
+ * @return array
+ *   array of pids.
  */
 function uofm_maintenance_query_get_children($parent) {
   module_load_include('inc', 'islandora', 'includes/utilities');
@@ -114,6 +134,12 @@ function uofm_maintenance_query_get_children($parent) {
 
 /**
  * Filter an array of PIDs to remove those in the Solr index.
+ *
+ * @param array $items
+ *   array of PIDs
+ *
+ * @return array
+ *   filtered array of PIDs
  */
 function uofm_maintenance_batch_index_filter(array $items) {
   module_load_include('inc', 'islandora', 'includes/utilities');

@@ -26,8 +26,11 @@ define('UOFM_MAINTENANCE_BATCH_INDEX_QUEUE', 'uofm_maintenance_batch_reindex');
  */
 define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE', 'uofm_maintenance_derivative_fixer');
 define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_TIMER', UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE);
+
 /**
  * Implements hook_cron_queue_info().
+ *
+ * We re-index objects using the cron runs.
  */
 function uofm_maintenance_cron_queue_info() {
   $queues[UOFM_MAINTENANCE_BATCH_INDEX_QUEUE] = array(
@@ -38,7 +41,10 @@ function uofm_maintenance_cron_queue_info() {
 }
 
 /**
- * Generate any missing derivatives.
+ * Correct any incorrect image/tiff mimetypes
+ *
+ * @param string|AbstractObject $object
+ *   the string PID or a Fedora Object
  */
 function uofm_maintenance_fix_tiff_worker($object) {
   $obj = FALSE;
@@ -62,6 +68,9 @@ function uofm_maintenance_fix_tiff_worker($object) {
 
 /**
  * Regenerate JP2 derivative from OBJ/TIFF.
+ *
+ * @param string|AbstractObject $object
+ *   the string PID or a Fedora Object
  */
 function uofm_maintenance_regen_jp2_worker($object) {
   $obj = FALSE;
@@ -86,6 +95,9 @@ function uofm_maintenance_regen_jp2_worker($object) {
 
 /**
  * Generate any missing derivatives.
+ *
+ * @param string|AbstractObject $object
+ *   the string PID or a Fedora Object
  */
 function uofm_maintenance_derivative_fixer_worker($object) {
   $obj = FALSE;
@@ -106,6 +118,9 @@ function uofm_maintenance_derivative_fixer_worker($object) {
 
 /**
  * Initiate a re-index of the object.
+ *
+ * @param string|AbstractObject $object
+ *   the string PID or a Fedora Object
  */
 function uofm_maintenance_batch_index_worker($object) {
   $obj = FALSE;
@@ -136,7 +151,7 @@ function uofm_maintenance_batch_index_worker($object) {
     curl_close($ch);
 
     if ($res === FALSE) {
-      watchdog('uofm_batch_index', 'Error re-indexing @o', array('@o' => $object));
+      watchdog('uofm_maintenance', 'Error re-indexing @o', array('@o' => $object));
     }
   }
 }
