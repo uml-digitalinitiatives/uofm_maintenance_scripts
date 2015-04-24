@@ -77,3 +77,58 @@ function uofm_maintenance_sparql_query($where) {
 
   return array_map($get_pid, $temp);
 }
+
+/**
+ * Recurse down to the children.
+ */
+function uofm_maintenance_recursive_query($pids, $results = array()) {
+  foreach ($pids as $parent) {
+    $results[] = $parent;
+    $children = uofm_maintenance_query_get_children($parent);
+    if (is_array($children) && count($children) > 0) {
+      $results = uofm_maintenance_recursive_query($children, $results);
+    }
+  }
+  return $results;
+}
+
+/**
+ * Query for the children of an object.
+ */
+function uofm_maintenance_query_get_children($parent) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  $results = array();
+  if (islandora_is_valid_pid($parent)) {
+    $query = "?object <fedora-rels-ext:isMemberOf> <info:fedora/$parent>";
+    $results = uofm_maintenance_sparql_query($query);
+  }
+  return $results;
+}
+
+/**
+ * Filter an array of PIDs to remove those in the Solr index.
+ */
+function uofm_maintenance_batch_index_filter(array $items) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  module_load_include('php', 'islandora_solr', 'SolrPhpClient/Apache/Solr/Service');
+
+  $queue = DrupalQueue::get(UOFM_BATCH_INDEX_QUEUE);
+  $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
+  $solr->setCreateDocuments(0);
+
+  // Make a long string of colon escaped PIDs
+  $query_pids = str_replace(':', '\\:', implode($items, " "));
+  // Search for all the possible PIDs.
+  $solr_query = "+PID:($query_pids)";
+  $solr_params = array('fl' => 'PID');
+  $res = $solr->search($solr_query, 0, count($items), $solr_params);
+  if ($res && $res->response->numFound < count($items)) {
+    // At least one is missing, get the missing PIDs.
+    $missing = array_diff($items, $res->response->docs);
+    return $missing;
+  }
+  else {
+    return array();
+  }
+}

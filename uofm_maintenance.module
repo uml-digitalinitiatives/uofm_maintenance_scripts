@@ -17,15 +17,25 @@ define('UOFM_MAINTENANCE_REGEN_JP2_QUEUE', 'uofm_maintenance_regenerate_jp2');
 define('UOFM_MAINTENANCE_REGEN_JP2_TIMER', UOFM_MAINTENANCE_REGEN_JP2_QUEUE);
 
 /**
+ * Batch index queue
+ */
+define('UOFM_MAINTENANCE_BATCH_INDEX_QUEUE', 'uofm_maintenance_batch_reindex');
+
+/**
+ * Derivative Fixer queue and timer.
+ */
+define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE', 'uofm_maintenance_derivative_fixer');
+define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_TIMER', UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE);
+/**
  * Implements hook_cron_queue_info().
  */
-/*function uofm_maintenance_cron_queue_info() {
-  $queues[UOFM_MAINTENANCE_FIX_TIFFS_QUEUE] = array(
-    'worker callback' => 'uofm_maintenance_fix_tiff_worker',
-    'time' => 120,
+function uofm_maintenance_cron_queue_info() {
+  $queues[UOFM_MAINTENANCE_BATCH_INDEX_QUEUE] = array(
+    'worker callback' => 'uofm_mainteance_batch_index_worker',
+    'time' => 180,
   );
   return $queues;
-}*/
+}
 
 /**
  * Generate any missing derivatives.
@@ -72,4 +82,61 @@ function uofm_maintenance_regen_jp2_worker($object) {
     }
   }
   return TRUE;
+}
+
+/**
+ * Generate any missing derivatives.
+ */
+function uofm_maintenance_derivative_fixer_worker($object) {
+  $obj = FALSE;
+  if (is_string($object)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($object)) {
+      $obj = islandora_object_load($object);
+    }
+  }
+  if (is_a($object, 'AbstractObject')) {
+    $obj = $object;
+  }
+  if ($obj) {
+    module_load_include('inc', 'islandora', 'includes/derivatives');
+    islandora_do_derivatives($obj, array('force' => FALSE));
+  }
+}
+
+/**
+ * Initiate a re-index of the object.
+ */
+function uofm_maintenance_batch_index_worker($object) {
+  $obj = FALSE;
+  if (is_string($object)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($object)) {
+      $obj = islandora_object_load($object);
+    }
+  }
+  if (is_a($object, 'AbstractObject')) {
+    $obj = $object;
+  }
+  if ($obj) {
+    $url = variable_get('islandora_collection_search_gsearch_endpoint', 'http://localhost:8080/fedoragsearch/rest');
+    $user = variable_get('islandora_collection_search_gsearch_user', NULL);
+    $passwd = variable_get('islandora_collection_search_gsearch_password', NULL);
+    $ch = curl_init();
+    $params = array(
+      "operation" => "updateIndex",
+      "action" => "fromPid",
+      "value" => $object,
+    );
+    curl_setopt($ch, CURLOPT_URL, $url . "?" . http_build_query($params));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_HEADER, 0);
+    curl_setopt($ch, CURLOPT_USERPWD, "$user:$passwd");
+    $res = curl_exec($ch);
+    curl_close($ch);
+
+    if ($res === FALSE) {
+      watchdog('uofm_batch_index', 'Error re-indexing @o', array('@o' => $object));
+    }
+  } 
 }
