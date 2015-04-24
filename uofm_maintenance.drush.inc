@@ -26,7 +26,7 @@ function uofm_maintenance_drush_command() {
       ),
     ),
     'aliases' => array('uofm_fix_mt_pp'),
-    'callback' => 'uofm_maintenance_preprocess',
+    'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(UOFM_MAINTENANCE_FIX_TIFFS_QUEUE, FALSE),
     'description' => 'Add a list of objects to a queue to have mimetypes (image/tif) changed to (image/tiff).',
     'drupal dependencies' => array(
@@ -42,7 +42,7 @@ function uofm_maintenance_drush_command() {
       ),
     ),
     'aliases' => array('uofm_fix_mt_run'),
-    'callback' => 'uofm_maintenance_run',
+    'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
       'uofm_maintenance_fix_tiff_worker',
       UOFM_MAINTENANCE_FIX_TIFFS_QUEUE,
@@ -71,7 +71,7 @@ function uofm_maintenance_drush_command() {
       ),
     ),
     'aliases' => array('uofm_regen_jp2_pp'),
-    'callback' => 'uofm_maintenance_preprocess',
+    'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(UOFM_MAINTENANCE_REGEN_JP2_QUEUE, FALSE),
     'description' => 'Add a list of objects to a queue to have the JP2 regenerated',
     'drupal dependencies' => array(
@@ -87,7 +87,7 @@ function uofm_maintenance_drush_command() {
       ),
     ),
     'aliases' => array('uofm_regen_jp2_run'),
-    'callback' => 'uofm_maintenance_run',
+    'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
       'uofm_maintenance_regen_jp2_worker',
       UOFM_MAINTENANCE_REGEN_JP2_QUEUE,
@@ -114,9 +114,15 @@ function uofm_maintenance_drush_command() {
       'pidfile' => array(
         'description' => 'Path to a textfile of PIDs to operate on, one per line',
       ),
+      'recursive' => array(
+        'description' => 'Process any children of the objects listed/queried',
+      ),
+      'force' => array(
+        'description' => 'Force indexing even if already in Solr, CAREFUL this could re-index ALOT of stuff.',
+      ),
     ),
     'aliases' => array('uofm_bi_pp'),
-    'callback' => 'uofm_maintenance_preprocess',
+    'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(UOFM_MAINTENANCE_BATCH_INDEX_QUEUE, TRUE),
     'description' => 'Add items to the queue to be re-indexed on cron runs.',
     'drupal dependencies' => array(
@@ -141,7 +147,7 @@ function uofm_maintenance_drush_command() {
       ),
     ),
     'aliases' => array('uofm_dfp'),
-    'callback' => 'uofm_maintenance_preprocess',
+    'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE, FALSE),
     'description' => 'Add items to the queue to be have missing derivatives created.',
     'drupal dependencies' => array(
@@ -157,7 +163,7 @@ function uofm_maintenance_drush_command() {
       ),
     ),
     'aliases' => array('uofm_dfr'),
-    'callback' => 'uofm_maintenance_run',
+    'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
       'uofm_maintenance_derivative_fixer_worker',
       UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE,
@@ -177,18 +183,18 @@ function uofm_maintenance_drush_command() {
 /**
  * Loads PIDs to a queue for processing.
  *
- * @param string $queue
+ * @param string $queue_name
  *   the name of the queue to add these items to.
- * @param bool $force
+ * @param bool $filter
  *   whether to filter PIDs to remove objects already in the Solr index.
  */
-function uofm_maintenance_preprocess($queue, $force) {
+function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE) {
   module_load_include('inc', 'islandora', 'includes/utilities');
 
-  $choices = (strlen(drush_get_options('query', '')) > 0 ? 1 : 0 +
-    strlen(drush_get_options('pid', '')) > 0 ? 1 : 0 +
-    strlen(drush_get_options('pidlist', '')) > 0 ? 1 : 0 +
-    strlen(drush_get_options('pidfile', '')) > 0 ? 1 : 0);
+  $choices = (strlen(drush_get_option('query', '')) > 0 ? 1 : 0 +
+    strlen(drush_get_option('pid', '')) > 0 ? 1 : 0 +
+    strlen(drush_get_option('pidlist', '')) > 0 ? 1 : 0 +
+    strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
   if ($choices == 0) {
     drush_set_error("You must set one of the options 'pid', 'pidlist, 'pidfile' or 'query'.");
   }
@@ -197,28 +203,28 @@ function uofm_maintenance_preprocess($queue, $force) {
   }
   $force = (bool) (!is_null(drush_get_option('force', NULL)));
   $recursive = (bool) (!is_null(drush_get_option('recursive', NULL)));
-  if (!is_null(drush_get_options('query', NULL))) {
+  if (!is_null(drush_get_option('query', NULL))) {
     $results = uofm_maintenance_load_pids(array(
       'type' => 'query',
-      'value' => drush_get_options('query', ''),
+      'value' => drush_get_option('query', ''),
     ));
   }
-  elseif (!is_null(drush_get_options('pid', NULL))) {
+  elseif (!is_null(drush_get_option('pid', NULL))) {
     $results = uofm_maintenance_load_pids(array(
       'type' => 'pid',
-      'value' => drush_get_options('pid', ''),
+      'value' => drush_get_option('pid', ''),
     ));
   }
-  elseif (!is_null(drush_get_options('pidlist', NULL))) {
+  elseif (!is_null(drush_get_option('pidlist', NULL))) {
     $results = uofm_maintenance_load_pids(array(
       'type' => 'pidlist',
-      'value' => drush_get_options('pidlist', ''),
+      'value' => drush_get_option('pidlist', ''),
     ));
   }
-  elseif (!is_null(drush_get_options('pidfile', NULL))) {
+  elseif (!is_null(drush_get_option('pidfile', NULL))) {
     $results = uofm_maintenance_load_pids(array(
       'type' => 'pidfile',
-      'value' => drush_get_options('pidfile', ''),
+      'value' => drush_get_option('pidfile', ''),
     ));
   }
   if (!is_array($results)) {
@@ -234,10 +240,10 @@ function uofm_maintenance_preprocess($queue, $force) {
     $new_results = uofm_maintenance_recursive_query($results);
     $results = array_unique($new_results);
   }
-  if ($filter) {
+  if ($filter && !$force) {
     $results = uofm_maintenance_batch_index_filter($results);
   }
-  $queue = DrupalQueue::get($queue);
+  $queue = DrupalQueue::get($queue_name);
   $count = 0;
   foreach ($results as $obj) {
     if (strlen(trim($obj)) > 0 && islandora_is_valid_pid($obj)) {
@@ -245,7 +251,7 @@ function uofm_maintenance_preprocess($queue, $force) {
       $count += 1;
     }
   }
-  drush_log("Added $count items to the queue ($queue)", 'ok');
+  drush_log("Added $count items to the queue ($queue_name)", 'ok');
 
 }
 
@@ -255,20 +261,19 @@ function uofm_maintenance_preprocess($queue, $force) {
  *
  * @param string $worker_fn
  *   name of the function to pass the queue data to
- * @param string $queue
+ * @param string $queue_name
  *   name of the queue to read items from
  * @param string $timer
- *   name of the timer to use when running
+ *   name of the timer use for timeout limits
  * @param int $lease
  *   length of time to claim each item for
  */
-function uofm_maintenance_run($worker_fn, $queue, $timer, $lease = 100) {
+function drush_uofm_maintenance_run($worker_fn, $queue_name, $timer, $lease = 100) {
   $timeout = drush_get_option('timeout', ini_get('max_execution_time'));
-  $queue = DrupalQueue::get($queue);
+  $queue = DrupalQueue::get($queue_name);
   timer_start($timer);
-  while (($timeout == 0 || (timer_read($timer) / 1000) < $timeout) && $queue->numberOfItems() > 0) {
-    $item = $queue->claimItem($lease);
-    if ($item instanceof SystemQueue) {
+  while (($timeout == 0 || (timer_read($timer) / 1000) < $timeout) && ($item = $queue->claimItem($lease)) !== FALSE) {
+    if (is_object($item) && isset($item->data)) {
       $res = $worker_fn($item->data);
       if ($res === TRUE) {
         $queue->deleteItem($item);
@@ -279,5 +284,5 @@ function uofm_maintenance_run($worker_fn, $queue, $timer, $lease = 100) {
       }
     }
   }
-  timer_stop($queue);
+  timer_stop($timer);
 }

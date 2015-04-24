@@ -142,26 +142,26 @@ function uofm_maintenance_query_get_children($parent) {
  *   filtered array of PIDs
  */
 function uofm_maintenance_batch_index_filter(array $items) {
-  module_load_include('inc', 'islandora', 'includes/utilities');
-  module_load_include('php', 'islandora_solr', 'SolrPhpClient/Apache/Solr/Service');
+  if (count($items) > 0) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    module_load_include('php', 'islandora_solr', 'SolrPhpClient/Apache/Solr/Service');
 
-  $queue = DrupalQueue::get(UOFM_BATCH_INDEX_QUEUE);
-  $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-  $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
-  $solr->setCreateDocuments(0);
+    $queue = DrupalQueue::get(UOFM_BATCH_INDEX_QUEUE);
+    $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+    $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
+    $solr->setCreateDocuments(0);
 
-  // Make a long string of colon escaped PIDs.
-  $query_pids = str_replace(':', '\\:', implode($items, " "));
-  // Search for all the possible PIDs.
-  $solr_query = "+PID:($query_pids)";
-  $solr_params = array('fl' => 'PID');
-  $res = $solr->search($solr_query, 0, count($items), $solr_params);
-  if ($res && $res->response->numFound < count($items)) {
-    // At least one is missing, get the missing PIDs.
-    $missing = array_diff($items, $res->response->docs);
-    return $missing;
+    // Make a long string of colon escaped PIDs.
+    $query_pids = str_replace(':', '\\:', implode($items, " "));
+    // Search for all the possible PIDs.
+    $solr_query = "+PID:($query_pids)";
+    $solr_params = array('fl' => 'PID');
+    $res = $solr->search($solr_query, 0, count($items), $solr_params);
+    if ($res && $res->response->numFound < count($items)) {
+      // At least one is missing, get the missing PIDs.
+      $missing = array_diff($items, $res->response->docs);
+      return $missing;
+    }
   }
-  else {
-    return array();
-  }
+  return array();
 }

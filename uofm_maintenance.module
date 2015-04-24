@@ -41,7 +41,7 @@ function uofm_maintenance_cron_queue_info() {
 }
 
 /**
- * Correct any incorrect image/tiff mimetypes
+ * Correct any incorrect image/tiff mimetypes.
  *
  * @param string|AbstractObject $object
  *   the string PID or a Fedora Object
@@ -113,7 +113,9 @@ function uofm_maintenance_derivative_fixer_worker($object) {
   if ($obj) {
     module_load_include('inc', 'islandora', 'includes/derivatives');
     islandora_do_derivatives($obj, array('force' => FALSE));
+    return TRUE
   }
+  return FALSE
 }
 
 /**
