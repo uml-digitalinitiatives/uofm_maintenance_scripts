@@ -113,9 +113,9 @@ function uofm_maintenance_derivative_fixer_worker($object) {
   if ($obj) {
     module_load_include('inc', 'islandora', 'includes/derivatives');
     islandora_do_derivatives($obj, array('force' => FALSE));
-    return TRUE
+    return TRUE;
   }
-  return FALSE
+  return FALSE;
 }
 
 /**

@@ -5,6 +5,16 @@
  */
 
 /**
+ * Need the utilities.
+ */
+require_once dirname(__FILE__) . 'includes/utilities.inc';
+
+/**
+ * Incase you didn't enable this module, we still want it.
+ */
+require_once dirname(__FILE__) . '/uofm_maintenance.module';
+
+/**
  * Implements hook_drush_command().
  */
 function uofm_maintenance_drush_command() {
@@ -211,19 +221,19 @@ function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE) {
   }
   elseif (!is_null(drush_get_option('pid', NULL))) {
     $results = uofm_maintenance_load_pids(array(
-      'type' => 'pid',
+      'type' => 'single',
       'value' => drush_get_option('pid', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pidlist', NULL))) {
     $results = uofm_maintenance_load_pids(array(
-      'type' => 'pidlist',
+      'type' => 'list',
       'value' => drush_get_option('pidlist', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pidfile', NULL))) {
     $results = uofm_maintenance_load_pids(array(
-      'type' => 'pidfile',
+      'type' => 'file',
       'value' => drush_get_option('pidfile', ''),
     ));
   }
