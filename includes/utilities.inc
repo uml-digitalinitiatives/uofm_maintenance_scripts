@@ -126,7 +126,7 @@ function uofm_maintenance_query_get_children($parent) {
   module_load_include('inc', 'islandora', 'includes/utilities');
   $results = array();
   if (islandora_is_valid_pid($parent)) {
-    $query = "?object <fedora-rels-ext:isMemberOf> <info:fedora/$parent>";
+    $query = "{ ?object <fedora-rels-ext:isMemberOf> <info:fedora/$parent> } UNION { ?object <fedora-rels-ext:isMemberOfCollection> <info:fedora/$parent> } UNION { ?object <fedora-rels-ext:isConstituentOf> <info:fedora/$parent> }";
     $results = uofm_maintenance_sparql_query($query);
   }
   return $results;

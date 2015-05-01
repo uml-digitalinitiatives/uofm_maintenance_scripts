@@ -84,9 +84,10 @@ function uofm_maintenance_regen_jp2_worker($object) {
     $obj = $object;
   }
   if (isset($obj['OBJ']) || isset($obj['TIFF'])) {
-    if ((isset($obj['OBJ']) && isset($obj['JP2']) && ($obj['OBJ']->size * 0.01) > $obj['JP2']->size) ||
-      (isset($obj['TIFF']) && isset($obj['JP2']) && ($obj['TIFF']->size * 0.01) > $obj['JP2']->size)) {
-      module_load_include('inc', 'islandora_large_image', 'includes/derivatives.inc');
+    if ((isset($obj['OBJ']) && isset($obj['JP2']) && ($obj['OBJ']->size * 0.001) > $obj['JP2']->size) ||
+      (isset($obj['TIFF']) && isset($obj['JP2']) && ($obj['TIFF']->size * 0.001) > $obj['JP2']->size)) {
+      module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
+      drush_log("Regenerate JP2 for " . $obj->id, "ok");
       islandora_large_image_create_jp2_derivative($obj);
     }
   }

@@ -7,7 +7,7 @@
 /**
  * Need the utilities.
  */
-require_once dirname(__FILE__) . 'includes/utilities.inc';
+require_once dirname(__FILE__) . '/includes/utilities.inc';
 
 /**
  * Incase you didn't enable this module, we still want it.
@@ -287,7 +287,7 @@ function drush_uofm_maintenance_run($worker_fn, $queue_name, $timer, $lease = 10
       $res = $worker_fn($item->data);
       if ($res === TRUE) {
         $queue->deleteItem($item);
-        drush_log("Processed object ({$item->data})", "ok");
+        drush_log("Processed object ({$item->data})", "notice");
       }
       else {
         $queue->releaseItem($item);
