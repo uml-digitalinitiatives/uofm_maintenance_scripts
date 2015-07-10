@@ -34,7 +34,7 @@ define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_TIMER', UOFM_MAINTENANCE_DERIVATIVE_FI
  */
 function uofm_maintenance_cron_queue_info() {
   $queues[UOFM_MAINTENANCE_BATCH_INDEX_QUEUE] = array(
-    'worker callback' => 'uofm_mainteance_batch_index_worker',
+    'worker callback' => 'uofm_maintenance_batch_index_worker',
     'time' => 180,
   );
   return $queues;
