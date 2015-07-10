@@ -397,27 +397,24 @@ function drush_uofm_maintenance_batch_index($filter = TRUE) {
     $results = uofm_maintenance_batch_index_filter($results);
   }
   if (count($results) > 0) {
-    $base_url = variable_get('islandora_base_url', 'http://localhost:8080/fedora');
+    // @TODO: Hardcoding this now, should make it configurable in future.
+    $base_url = 'http://localhost:8080/uofm-camel-route/rest/reindex/';
     $user = variable_get('islandora_collection_search_gsearch_user', NULL);
     $passwd = variable_get('islandora_collection_search_gsearch_password', NULL);
     $count = 0;
     if (!(is_null($user) || is_null($passwd))) {
       foreach ($results as $obj) {
         if (strlen(trim($obj)) > 0 && islandora_is_valid_pid($obj)) {
-          $dt = new DateTime();
-          $date = $dt->format("Y-m-d\TH:i:s.u\Z");
-          $url = $base_url . "/objects/$obj";
+          $url = $base_url . $obj;
           $ch = curl_init();
-          $params = array(
-            "state" => "A",
-          );
-          curl_setopt($ch, CURLOPT_URL, $url . "?" . http_build_query($params));
+          curl_setopt($ch, CURLOPT_URL, $url);
           curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
           curl_setopt($ch, CURLOPT_HEADER, 0);
           curl_setopt($ch, CURLOPT_USERPWD, "$user:$passwd");
           $result = curl_exec($ch);
           curl_close($ch);
-          if (!$result) {
+          $r = preg_match("~HTTP/1.1 200 OK~", $result);
+          if (!$r) {
             drush_log(t("Problem adding item (@p) to JMS queue", array('@p' => $obj)), "error");
           }
           else {
