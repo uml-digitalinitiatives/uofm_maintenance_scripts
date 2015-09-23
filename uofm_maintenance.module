@@ -28,6 +28,11 @@ define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE', 'uofm_maintenance_derivative_f
 define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_TIMER', UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE);
 
 /**
+ * Update parent queue.
+ */
+define('UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE', 'uofm_maintenance_update_parent');
+
+/**
  * Implements hook_cron_queue_info().
  *
  * We re-index objects using the cron runs.
@@ -157,4 +162,96 @@ function uofm_maintenance_batch_index_worker($object) {
       watchdog('uofm_maintenance', 'Error re-indexing @o', array('@o' => $object));
     }
   }
+}
+
+/**
+ * Replace/add a parent to the object.
+ *
+ * @param array $data
+ *   array with keys:
+ *
+ *   'pid' => pid to act on,
+ *   'relation_uri' => relation URI to use,
+ *   'relation_pred' => relation predicate to use,
+ *   'old_parent' => parent to replace (if exists),
+ *   'new_parent' => parent to add,
+ *   'update_xacml' => copy POLICY from the new parent,
+ */
+function uofm_maintenance_update_parent_worker($data) {
+  $key_template = array(
+    'pid' => 'test',
+    'relation_uri' => 'test',
+    'relation_pred' => 'test',
+    'new_parent' => 'test',
+    'update_xacml' => TRUE,
+  );
+  if (count(array_intersect_key($data, $key_template)) != 4) {
+    drush_log("Invalid array passed to the update_parent_worker", "error");
+    return FALSE;
+  }
+  $pid = $data['pid'];
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+        $object = islandora_object_load($pid);
+    }
+  }
+  if (!is_a($object, 'AbstractObject')) {
+    drush_log("Did not load object properly in update_parent_worker", "error");
+    return FALSE;
+  }
+  $new_parent = $data['new_parent'];
+  if (!(strpos($data, "info:fedora/") == 0)) {
+    $new_parent = "info:fedora/$new_parent";
+  }
+
+  if (count($object->relationships->get($data['relation_uri'], $data['relation_pred'])) > 0) {
+    $object->relationships->remove($data['relation_uri'], $data['relation_pred']);
+  }
+  $object->relationships->add($data['relation_uri'], $data['relation_pred'], $new_parent);
+  $result = TRUE;
+  if (module_exists('islandora_xacml_editor') && $data['update_xacml']) {
+    $result = uofm_maintenance_update_xacml_worker(array('from' => $data['new_parent'], 'to' => $pid));
+  }
+  return $result;
+}
+
+/**
+ * Copies XACML policy from one object to another.
+ *
+ * @param array $data
+ *   array with keys ('from' and 'to') and values as the objects or PIDs.
+ * @return bool
+ *   Was it successful.
+ */
+function uofm_maintenance_update_xacml_worker($data) {
+  if (!module_exists('islandora_xacml_editor')) {
+    return FALSE;
+  }
+  if (!is_array($data) || !array_key_exists('from', $data) || !array_key_exists('to', $data)) {
+    return FALSE;
+  }
+  $from = $data['from'];
+  $to = $data['to'];
+  $loader = function($object) {
+    if (is_string($object)) {
+      module_load_include('inc', 'islandora', 'includes/utilities');
+      if (islandora_is_valid_pid($object)) {
+        return islandora_object_load($object);
+      }
+    }
+    if (is_a($object, 'AbstractObject')) {
+      return $object;
+    }
+  };
+  $from_obj = $loader($from);
+  if (!isset($from_obj['POLICY'])) {
+    return FALSE;
+  }
+  module_load_include('inc', 'islandora_xacml_editor', 'includes/batch');
+  $to_obj = $loader($to);
+  $xml = $from_obj['POLICY']->content;
+  $policy_update = new IslandoraUpdatePolicy($to_obj->id, $xml);
+  $success = $policy_update->updatePolicy();
+  return $success;
 }

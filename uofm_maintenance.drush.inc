@@ -218,6 +218,67 @@ function uofm_maintenance_drush_command() {
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
+  $items["uofm_maintenance_update_parent_pp"] = array(
+    'options' => array(
+      'pid' => array(
+        'description' => 'A PID to operate on',
+      ),
+      'pidlist' => array(
+        'description' => 'A comma seperated list of PIDs to operate on',
+      ),
+      'pidfile' => array(
+        'description' => 'Path to a textfile of PIDs to operate on, one per line',
+      ),
+      'parent_relationship_uri' => array(
+        'description' => 'The namespace URI of the relationship to the parent.' .
+        ' Defaults to "info:fedora/fedora-system:def/relations-external#".',
+        'value' => 'optional',
+      ),
+      'parent_relationship_pred' => array(
+        'description' => 'The predicate of the relationship to the parent. ' .
+        'Defaults to "isMemberOf".',
+        'value' => 'optional',
+      ),
+      'old_parent' => array(
+        'description' => 'The old parent to match to, incase of multiple parents.' .
+          ' If not provided the new parent is just added.',
+      ),
+      'new_parent' => array(
+        'description' => 'The new parent to add.',
+        'required' => TRUE,
+      ),
+      'update_xacml' => array(
+        'description' => 'If the XACML module is enabled, copy the parent\'s XACML policy and update all children.',
+      ),
+    ),
+    'description' => 'Add items to a queue to have a parent changed/added and XACML updated.',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
+  $items["uofm_maintenance_update_parent_run"] = array(
+    'options' => array(
+      'timeout' => array(
+        'description' => 'Length of time to run, or until queue is empty if omitted',
+      ),
+    ),
+    'callback' => 'drush_uofm_maintenance_run',
+    'callback arguments' => array(
+      'uofm_maintenance_update_parent_worker',
+      UOFM_MAINTENANCE_PARENT_UPDATE_QUEUE,
+      UOFM_MAINTENANCE_PARENT_UPDATE_TIMER,
+      300,
+    ),
+    'description' => 'Process the queue of objects generated with uofm_maintenance_update_parent_pp,' .
+      ' update parent for all objects.',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
   return $items;
 }
 
@@ -228,6 +289,8 @@ function uofm_maintenance_drush_command() {
  *   the name of the queue to add these items to.
  * @param bool $filter
  *   whether to filter PIDs to remove objects already in the Solr index.
+ * @param string $item_creation
+ *   function to generate the queue item, other than the default of PID.
  */
 function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE) {
   module_load_include('inc', 'islandora', 'includes/utilities');
@@ -349,7 +412,7 @@ function drush_uofm_maintenance_batch_index($filter = TRUE) {
     strlen(drush_get_option('pidlist', '')) > 0 ? 1 : 0 +
     strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
   if ($choices == 0) {
-    drush_set_error("You must set one of the options 'pid', 'pidlist, 'pidfile' or 'query'.");
+    drush_set_error("You must set one of the options 'pid', 'pidlist', 'pidfile' or 'query'.");
   }
   elseif ($choices > 1) {
     drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
@@ -425,4 +488,74 @@ function drush_uofm_maintenance_batch_index($filter = TRUE) {
       drush_log("Added $count items to the JMS queue", 'ok');
     }
   }
+}
+
+function drush_uofm_maintenance_update_parent_pp() {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+
+  $choices = (strlen(drush_get_option('pid', '')) > 0 ? 1 : 0 +
+    strlen(drush_get_option('pidlist', '')) > 0 ? 1 : 0 +
+    strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
+  if ($choices == 0) {
+    drush_set_error("You must set one of the options 'pid', 'pidlist' or 'pidfile'.");
+  }
+  elseif ($choices > 1) {
+    drush_set_error("You can only use ONE of the options 'pid', 'pidlist' or 'pidfile' at a time.");
+  }
+  if (strlen(drush_get_option('new_parent', '')) == 0) {
+    drush_set_error("You MUST provide a 'new_parent' parameter.");
+  }
+
+  if (!is_null(drush_get_option('pid', NULL))) {
+    $results = uofm_maintenance_load_pids(array(
+      'type' => 'single',
+      'value' => drush_get_option('pid', ''),
+    ));
+  }
+  elseif (!is_null(drush_get_option('pidlist', NULL))) {
+    $results = uofm_maintenance_load_pids(array(
+      'type' => 'list',
+      'value' => drush_get_option('pidlist', ''),
+    ));
+  }
+  elseif (!is_null(drush_get_option('pidfile', NULL))) {
+    $results = uofm_maintenance_load_pids(array(
+      'type' => 'file',
+      'value' => drush_get_option('pidfile', ''),
+    ));
+  }
+  if (!is_array($results)) {
+    if ($results == -8) {
+      drush_set_error("File does not exist.");
+    }
+    elseif ($results == -9) {
+      drush_set_error("File cannot be read.");
+    }
+  }
+  $relation_uri = drush_get_option('parent_relationship_uri', 'info:fedora/fedora-system:def/relations-external#');
+  $relation_pred = drush_get_option('parent_relationship_pred', 'isMemberOf');
+  $old_parent = drush_get_options('old_parent', NULL);
+  $new_parent = drush_get_options('new_parent', NULL);
+  $update_xacml = (bool) (!is_null(drush_get_option('update_xacml', NULL)));
+  
+  $queue = DrupalQueue::get(UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE);
+  $count = 0;
+  foreach ($results as $obj) {
+    if (strlen(trim($obj)) > 0 && islandora_is_valid_pid($obj)) {
+      $data = array(
+        'relation_uri' => $relation_uri,
+        'relation_pred' => $relation_pred,
+        'old_parent' => $old_parent,
+        'new_parent' => $new_parent,
+        'update_xacml' => $update_xacml,
+        'pid' => $obj,
+      );
+      $queue->createItem($data);
+      $count += 1;
+    }
+  }
+  drush_log(t("Added %count items to the queue (%queue_name)", array(
+    '%count' => $count,
+    '%queue_name' => UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE,
+  )), 'ok');
 }
