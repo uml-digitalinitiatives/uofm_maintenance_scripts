@@ -170,6 +170,25 @@ function uofm_maintenance_batch_index_worker($object) {
 }
 
 /**
+ * Custome queue item builder.
+ */
+function uofm_maintenance_update_parent_custom_queue($pid) {
+  $relation_uri = drush_get_option('parent_relationship_uri', 'info:fedora/fedora-system:def/relations-external#');
+  $relation_pred = drush_get_option('parent_relationship_pred', 'isMemberOf');
+  $old_parent = drush_get_option('old_parent', NULL);
+  $new_parent = drush_get_option('new_parent', NULL);
+  $update_xacml = (bool) (!is_null(drush_get_option('update_xacml', NULL)));
+  return array(
+    'relation_uri' => $relation_uri,
+    'relation_pred' => $relation_pred,
+    'old_parent' => $old_parent,
+    'new_parent' => $new_parent,
+    'update_xacml' => $update_xacml,
+    'pid' => $pid,
+  );
+}
+
+/**
  * Replace/add a parent to the object.
  *
  * @param array $data
