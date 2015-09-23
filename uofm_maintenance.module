@@ -33,6 +33,11 @@ define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_TIMER', UOFM_MAINTENANCE_DERIVATIVE_FI
 define('UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE', 'uofm_maintenance_update_parent');
 
 /**
+ * Propogate XACML.
+ */
+define('UOFM_MAINTENANCE_COPY_XACML_QUEUE', 'uofm_maintenance_copy_xacml');
+
+/**
  * Implements hook_cron_queue_info().
  *
  * We re-index objects using the cron runs.
@@ -185,7 +190,7 @@ function uofm_maintenance_update_parent_worker($data) {
     'new_parent' => 'test',
     'update_xacml' => TRUE,
   );
-  if (count(array_intersect_key($data, $key_template)) != 4) {
+  if (count(array_intersect_key($data, $key_template)) != 5) {
     drush_log("Invalid array passed to the update_parent_worker", "error");
     return FALSE;
   }
@@ -201,12 +206,18 @@ function uofm_maintenance_update_parent_worker($data) {
     return FALSE;
   }
   $new_parent = $data['new_parent'];
-  if (!(strpos($data, "info:fedora/") == 0)) {
+  if (!(strpos($new_parent, "info:fedora/") == 0)) {
     $new_parent = "info:fedora/$new_parent";
   }
 
-  if (count($object->relationships->get($data['relation_uri'], $data['relation_pred'])) > 0) {
-    $object->relationships->remove($data['relation_uri'], $data['relation_pred']);
+  if (isset($data['old_parent'])) {
+    $old_parent = $data['old_parent'];
+    if (!(strpos($old_parent, "info:fedora/") == 0)) {
+      $old_parent = "info:fedora/$old_parent";
+    }
+    if (count($object->relationships->get($data['relation_uri'], $data['relation_pred'])) > 0) {
+      $object->relationships->remove($data['relation_uri'], $data['relation_pred'], $old_parent);
+    }
   }
   $object->relationships->add($data['relation_uri'], $data['relation_pred'], $new_parent);
   $result = TRUE;
@@ -214,6 +225,20 @@ function uofm_maintenance_update_parent_worker($data) {
     $result = uofm_maintenance_update_xacml_worker(array('from' => $data['new_parent'], 'to' => $pid));
   }
   return $result;
+}
+
+/**
+ * XACML queue custom builder.
+ *
+ * @param string $pid
+ *   the PID for this action.
+ */
+function uofm_maintenance_copy_xacml_custom_queue($pid) {
+  $from = drush_get_option('from_pid', NULL);
+  if (is_null($from)) {
+    drush_set_error("--from_pid must be set.");
+  }
+  return array('to' => $pid, 'from' => $from);
 }
 
 /**

@@ -267,12 +267,66 @@ function uofm_maintenance_drush_command() {
     'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
       'uofm_maintenance_update_parent_worker',
-      UOFM_MAINTENANCE_PARENT_UPDATE_QUEUE,
-      UOFM_MAINTENANCE_PARENT_UPDATE_TIMER,
+      UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE,
+      UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE,
       300,
     ),
     'description' => 'Process the queue of objects generated with uofm_maintenance_update_parent_pp,' .
       ' update parent for all objects.',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
+  $items['uofm_maintenance_copy_xacml_pp'] = array(
+    'options' => array(
+      'query' => array(
+        'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
+      ),
+      'pid' => array(
+        'description' => 'A PID to operate on',
+      ),
+      'pidlist' => array(
+        'description' => 'A comma seperated list of PIDs to operate on',
+      ),
+      'pidfile' => array(
+        'description' => 'Path to a textfile of PIDs to operate on, one per line',
+      ),
+      'from_pid' => array(
+        'description' => 'The PID to copy the XACML policy from.',
+        'required' => TRUE,
+      ),
+    ),
+    'aliases' => array('uofm_dfp'),
+    'callback' => 'drush_uofm_maintenance_preprocess',
+    'callback arguments' => array(
+      UOFM_MAINTENANCE_COPY_XACML_QUEUE,
+      FALSE,
+      'uofm_maintenance_copy_xacml_custom_queue',
+    ),
+    'description' => 'Add items to the queue to have XACML policies copied to them.',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
+  $items['uofm_maintenance_derivative_fixer_run'] = array(
+    'options' => array(
+      'timeout' => array(
+        'description' => 'Length of time to run, or until queue is empty if omitted',
+      ),
+    ),
+    'aliases' => array('uofm_dfr'),
+    'callback' => 'drush_uofm_maintenance_run',
+    'callback arguments' => array(
+      'uofm_maintenance_derivative_fixer_worker',
+      UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE,
+      UOFM_MAINTENANCE_DERIVATIVE_FIXER_TIMER,
+      300,
+    ),
+    'description' => 'Process the queue of objects generated with uofm_regen_jp2_pp, regenerate JP2 for all objects',
     'drupal dependencies' => array(
       'islandora',
     ),
@@ -292,7 +346,7 @@ function uofm_maintenance_drush_command() {
  * @param string $item_creation
  *   function to generate the queue item, other than the default of PID.
  */
-function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE) {
+function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE, $custom_builder = NULL) {
   module_load_include('inc', 'islandora', 'includes/utilities');
 
   $choices = (strlen(drush_get_option('query', '')) > 0 ? 1 : 0 +
@@ -351,7 +405,13 @@ function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE) {
   $count = 0;
   foreach ($results as $obj) {
     if (strlen(trim($obj)) > 0 && islandora_is_valid_pid($obj)) {
-      $queue->createItem($obj);
+      if (!is_null($custom_builder) && function_exists($custom_builder)) {
+        $return_obj = $custom_builder($obj);
+        $queue->createItem($return_obj);
+      }
+      else {
+        $queue->createItem($obj);
+      }
       $count += 1;
     }
   }
@@ -382,14 +442,26 @@ function drush_uofm_maintenance_run($worker_fn, $queue_name, $timer, $lease = 10
       $res = $worker_fn($item->data);
       if ($res === TRUE) {
         $queue->deleteItem($item);
-        drush_log("Processed object ({$item->data})", "notice");
+        if (is_string($item->data)) {
+          drush_log("Processed object ({$item->data})", "notice");
+        }
+        else {
+          drush_log("Processed object...", "notice");
+        }
       }
       else if (isset($bad_item) && $bad_item === $item->data) {
-        drush_log("Second attempt (in a row) processing object ({$item->data}) failed, deleting from queue.", "warning");
+        if (is_string($item->data)) {
+          drush_log("Second attempt (in a row) processing object ({$item->data}) failed, deleting from queue.", "warning");
+        }
         $queue->deleteItem($item);
       }
       else {
-        drush_log("Error processing object ({$item->data})", "warning");
+        if (is_string($item->data)) {
+          drush_log("Error processing object ({$item->data})", "warning");
+        }
+        else {
+          drush_log("Error processing object...", "warning");
+        }
         $queue->releaseItem($item);
         $bad_item = $item->data;
       }
@@ -534,8 +606,8 @@ function drush_uofm_maintenance_update_parent_pp() {
   }
   $relation_uri = drush_get_option('parent_relationship_uri', 'info:fedora/fedora-system:def/relations-external#');
   $relation_pred = drush_get_option('parent_relationship_pred', 'isMemberOf');
-  $old_parent = drush_get_options('old_parent', NULL);
-  $new_parent = drush_get_options('new_parent', NULL);
+  $old_parent = drush_get_option('old_parent', NULL);
+  $new_parent = drush_get_option('new_parent', NULL);
   $update_xacml = (bool) (!is_null(drush_get_option('update_xacml', NULL)));
   
   $queue = DrupalQueue::get(UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE);
@@ -554,8 +626,8 @@ function drush_uofm_maintenance_update_parent_pp() {
       $count += 1;
     }
   }
-  drush_log(t("Added %count items to the queue (%queue_name)", array(
-    '%count' => $count,
-    '%queue_name' => UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE,
+  drush_log(t("Added @count items to the queue (@queue_name)", array(
+    '@count' => $count,
+    '@queue_name' => UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE,
   )), 'ok');
 }
