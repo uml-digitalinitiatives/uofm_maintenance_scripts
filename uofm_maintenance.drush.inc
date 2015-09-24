@@ -110,37 +110,6 @@ function uofm_maintenance_drush_command() {
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
-  $items['uofm_maintenance_batch_index_pp'] = array(
-    'options' => array(
-      'query' => array(
-        'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
-      ),
-      'pid' => array(
-        'description' => 'A PID to operate on',
-      ),
-      'pidlist' => array(
-        'description' => 'A comma seperated list of PIDs to operate on',
-      ),
-      'pidfile' => array(
-        'description' => 'Path to a textfile of PIDs to operate on, one per line',
-      ),
-      'recursive' => array(
-        'description' => 'Process any children of the objects listed/queried',
-      ),
-      'force' => array(
-        'description' => 'Force indexing even if already in Solr, CAREFUL this could re-index ALOT of stuff.',
-      ),
-    ),
-    'aliases' => array('uofm_bi_pp'),
-    'callback' => 'drush_uofm_maintenance_preprocess',
-    'callback arguments' => array(UOFM_MAINTENANCE_BATCH_INDEX_QUEUE, TRUE),
-    'description' => 'Add items to the queue to be re-indexed on cron runs.',
-    'drupal dependencies' => array(
-      'islandora',
-    ),
-    'category' => 'uofm_maintenance_scripts',
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
-  );
   $items['uofm_maintenance_batch_index_jms'] = array(
         'options' => array(
       'query' => array(

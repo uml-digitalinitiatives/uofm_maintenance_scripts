@@ -38,19 +38,6 @@ define('UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE', 'uofm_maintenance_update_parent')
 define('UOFM_MAINTENANCE_COPY_XACML_QUEUE', 'uofm_maintenance_copy_xacml');
 
 /**
- * Implements hook_cron_queue_info().
- *
- * We re-index objects using the cron runs.
- */
-function uofm_maintenance_cron_queue_info() {
-  $queues[UOFM_MAINTENANCE_BATCH_INDEX_QUEUE] = array(
-    'worker callback' => 'uofm_maintenance_batch_index_worker',
-    'time' => 180,
-  );
-  return $queues;
-}
-
-/**
  * Correct any incorrect image/tiff mimetypes.
  *
  * @param string|AbstractObject $object
@@ -127,46 +114,6 @@ function uofm_maintenance_derivative_fixer_worker($object) {
     return TRUE;
   }
   return FALSE;
-}
-
-/**
- * Initiate a re-index of the object.
- *
- * @param string|AbstractObject $object
- *   the string PID or a Fedora Object
- */
-function uofm_maintenance_batch_index_worker($object) {
-  $obj = FALSE;
-  if (is_string($object)) {
-    module_load_include('inc', 'islandora', 'includes/utilities');
-    if (islandora_is_valid_pid($object)) {
-      $obj = islandora_object_load($object);
-    }
-  }
-  if (is_a($object, 'AbstractObject')) {
-    $obj = $object;
-  }
-  if ($obj) {
-    $url = variable_get('islandora_collection_search_gsearch_endpoint', 'http://localhost:8080/fedoragsearch/rest');
-    $user = variable_get('islandora_collection_search_gsearch_user', NULL);
-    $passwd = variable_get('islandora_collection_search_gsearch_password', NULL);
-    $ch = curl_init();
-    $params = array(
-      "operation" => "updateIndex",
-      "action" => "fromPid",
-      "value" => $object,
-    );
-    curl_setopt($ch, CURLOPT_URL, $url . "?" . http_build_query($params));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_HEADER, 0);
-    curl_setopt($ch, CURLOPT_USERPWD, "$user:$passwd");
-    $res = curl_exec($ch);
-    curl_close($ch);
-
-    if ($res === FALSE) {
-      watchdog('uofm_maintenance', 'Error re-indexing @o', array('@o' => $object));
-    }
-  }
 }
 
 /**
