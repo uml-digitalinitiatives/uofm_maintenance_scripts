@@ -65,7 +65,7 @@ This is the drush command to preprocess a PID, comma separated list of PIDs, fil
       FALSE,
       // A function name to generate your queue items, defaults to adding the PID as the queue data.
       // The function takes a single queue and returns the object/array/etc to add to the queue.
-      'uofm\_maintenance\_custom\_queue\_maker',
+      'uofm_maintenance_custom_queue_maker',
     ),
     'description' => 'Add a list of objects to a queue to have mimetypes (image/tif) changed to (image/tiff).',
     'drupal dependencies' => array(
