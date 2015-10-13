@@ -92,25 +92,35 @@ function uofm_maintenance_regen_jp2_worker($object) {
 }
 
 /**
+ * Custom queue generation for derivative fixer.
+ *
+ * @var $pid string
+ *   An object pid to process
+ * @return array
+ *   An array for the derivative fixer worker.
+ */
+function uofm_maintenance_deriviative_fixer_queue($pid) {
+  $force = drush_get_option('force', NULL);
+  return array('pid' => $pid, 'force' => (!is_null($force)));
+}
+
+/**
  * Generate any missing derivatives.
  *
- * @param string|AbstractObject $object
- *   the string PID or a Fedora Object
+ * @param array $data
+ *   array with keys 'pid' and 'force'
  */
-function uofm_maintenance_derivative_fixer_worker($object) {
+function uofm_maintenance_derivative_fixer_worker($data) {
   $obj = FALSE;
-  if (is_string($object)) {
+  if (array_key_exists('pid', $data) && is_string($data['pid'])) {
     module_load_include('inc', 'islandora', 'includes/utilities');
-    if (islandora_is_valid_pid($object)) {
-      $obj = islandora_object_load($object);
+    if (islandora_is_valid_pid($data['pid'])) {
+      $obj = islandora_object_load($data['pid']);
     }
-  }
-  if (is_a($object, 'AbstractObject')) {
-    $obj = $object;
   }
   if ($obj) {
     module_load_include('inc', 'islandora', 'includes/derivatives');
-    islandora_do_derivatives($obj, array('force' => FALSE));
+    islandora_do_derivatives($obj, array('force' => $data['force']));
     return TRUE;
   }
   return FALSE;

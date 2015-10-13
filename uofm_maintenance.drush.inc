@@ -155,10 +155,17 @@ function uofm_maintenance_drush_command() {
       'pidfile' => array(
         'description' => 'Path to a textfile of PIDs to operate on, one per line',
       ),
+      'force' => array(
+        'description' => 'Force indexing even if already in Solr, CAREFUL this could re-index ALOT of stuff.',
+      ),
     ),
     'aliases' => array('uofm_dfp'),
     'callback' => 'drush_uofm_maintenance_preprocess',
-    'callback arguments' => array(UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE, FALSE),
+    'callback arguments' => array(
+      UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE,
+      FALSE,
+      'uofm_maintenance_derivative_fixer_queue',
+    ),
     'description' => 'Add items to the queue to be have missing derivatives created.',
     'drupal dependencies' => array(
       'islandora',
