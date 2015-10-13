@@ -99,7 +99,7 @@ function uofm_maintenance_regen_jp2_worker($object) {
  * @return array
  *   An array for the derivative fixer worker.
  */
-function uofm_maintenance_deriviative_fixer_queue($pid) {
+function uofm_maintenance_derivative_fixer_queue($pid) {
   $force = drush_get_option('force', NULL);
   return array('pid' => $pid, 'force' => (!is_null($force)));
 }

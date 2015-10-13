@@ -156,7 +156,7 @@ function uofm_maintenance_drush_command() {
         'description' => 'Path to a textfile of PIDs to operate on, one per line',
       ),
       'force' => array(
-        'description' => 'Force indexing even if already in Solr, CAREFUL this could re-index ALOT of stuff.',
+        'description' => 'Force derivative to be recreated even if one exists.',
       ),
     ),
     'aliases' => array('uofm_dfp'),
