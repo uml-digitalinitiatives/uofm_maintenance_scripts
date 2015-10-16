@@ -126,7 +126,7 @@ function uofm_maintenance_derivative_fixer_worker($data) {
     }
   }
   if ($obj) {
-    module_load_include('inc', 'islandora', 'includes/regenerate_derivatives.form');
+    module_load_include('inc', 'islandora', 'includes/derivatives');
     $options = array_diff($data, array('pid' => 1));
     $results = islandora_do_derivatives($obj, $options);
     islandora_derivative_logging($results);
