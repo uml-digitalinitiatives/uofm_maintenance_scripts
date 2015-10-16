@@ -158,6 +158,9 @@ function uofm_maintenance_drush_command() {
       'force' => array(
         'description' => 'Force derivative to be recreated even if one exists.',
       ),
+      'source_dsid' => array(
+        'description' => 'Filter derivative hooks by this source datastream ID',
+      ),
     ),
     'aliases' => array('uofm_dfp'),
     'callback' => 'drush_uofm_maintenance_preprocess',

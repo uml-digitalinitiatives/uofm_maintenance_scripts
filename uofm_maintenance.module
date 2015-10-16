@@ -101,7 +101,14 @@ function uofm_maintenance_regen_jp2_worker($object) {
  */
 function uofm_maintenance_derivative_fixer_queue($pid) {
   $force = drush_get_option('force', NULL);
-  return array('pid' => $pid, 'force' => (!is_null($force)));
+  $item = array(
+    'pid' => $pid,
+    'force' => (bool) (!is_null($force)),
+  );
+  if (!is_null(drush_get_option('source_dsid', NULL))) {
+    $item['source_dsid'] = drush_get_option('source_dsid', '');
+  }
+  return $item;
 }
 
 /**
@@ -119,8 +126,10 @@ function uofm_maintenance_derivative_fixer_worker($data) {
     }
   }
   if ($obj) {
-    module_load_include('inc', 'islandora', 'includes/derivatives');
-    islandora_do_derivatives($obj, array('force' => $data['force']));
+    module_load_include('inc', 'islandora', 'includes/regenerate_derivatives.form');
+    $options = array_diff($data, array('pid' => 1));
+    $results = islandora_do_derivatives($obj, $options);
+    islandora_derivative_logging($results);
     return TRUE;
   }
   return FALSE;
