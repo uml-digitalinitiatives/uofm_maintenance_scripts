@@ -271,6 +271,15 @@ function uofm_maintenance_update_xacml_worker($data) {
 
 /**
  *
+ * Fix dates for faceting.
+ *
+ * Copy full mods:subject/mods:temporal dates, if YYY? make YYY5
+ *
+ * @param $pid string
+ *   The pid of the object to process
+ *
+ * return boolean
+ *   Did it succeed?
  */
 function uofm_maintenance_fix_dates_worker($pid) {
   if (is_string($pid)) {
@@ -282,23 +291,46 @@ function uofm_maintenance_fix_dates_worker($pid) {
         $mods->loadXML($object['MODS']->content);
         $xpath = new DOMXpath($mods);
         $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+        $mods_top = $xpath->query('/mods:mods');
+        $mods_top = $mods_top->item(0);
         $dates = $xpath->query('//mods:subject/mods:temporal');
         $adds = array();
         foreach ($dates as $date) {
-          if (preg_match('/([0-9]{3}\?|[0-9]{4})/',$date, $matches)) {
-            $adds[] = '<mods:dateCreated>' . str_replace('?', 5, $matches[1]) . '</mods:dateCreated>';
+          $text = $date->textContent;
+          // Match YYYY or YYY?, without a hyphen after it.
+          if (preg_match('/([0-9]{3}\?|[0-9]{4})[^\-]/',$text, $matches)) {
+            $adds[] = '<dateCreated>' . str_replace('?', 5, $matches[1]) . '-01-01</dateCreated>';
           }
         }
         // There is a change so update MODS and save back.
         if (count($adds) > 0) {
-          $extension = '<mods:extension>' . implode($adds, ' ') . '</mods:extension>';
+          $ext = $xpath->query('//mods:extension');
+          $extension = '<extension>' . implode($adds, ' ') . '</extension>';
           $new_node = dom_import_simplexml(simplexml_load_string($extension));
           $new_node = $mods->importNode($new_node, TRUE);
-          $mods->appendChild($new_node);
+          if ($ext->length > 0) {
+            $mods_top->replaceChild($new_node, $ext->item(0));
+          }
+          else {
+            $mods_top->appendChild($new_node);
+          }
           $new_xml = $mods->saveXML();
-          $object['MODS']->content($new_xml);
+          $object['MODS']->content = $new_xml;
+          return TRUE;
         }
       }
+      else {
+        drush_log(t("No MODS datastream for object %p", array('%p' => $pid)), "notice");
+        return TRUE;
+      }
     }
+    else {
+      drush_log(t("%p is not a valid pid", array('%p' => $pid)), "error");
+      return FALSE;
+    }
+  }
+  else {
+    drush_log("Did not receive a string pid", "error");
+    return FALSE;
   }
 }
