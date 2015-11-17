@@ -297,9 +297,10 @@ function uofm_maintenance_fix_dates_worker($pid) {
         $adds = array();
         foreach ($dates as $date) {
           $text = $date->textContent;
-          // Match YYYY or YYY?, without a hyphen after it.
-          if (preg_match('/([0-9]{3}\?|[0-9]{4})[^\-]/',$text, $matches)) {
-            $adds[] = '<dateCreated>' . str_replace('?', 5, $matches[1]) . '-01-01</dateCreated>';
+          // Match the date, if it is only to the decade make it a 5.
+          // If the full date is there, use it otherwise append -01-01.
+          if (preg_match('/([0-9]{3}\?|[0-9]{4})(\-[0-9]{1,2})?(\-[0-9]{1,2})?/',$text, $matches)) {
+            $adds[] = '<dateCreated>' . str_replace('?', 5, $matches[1]) . (isset($matches[2]) ? $matches[2] : '-01') . (isset($matches[3]) ? $matches[3] : '-01') . '</dateCreated>';
           }
         }
         // There is a change so update MODS and save back.
