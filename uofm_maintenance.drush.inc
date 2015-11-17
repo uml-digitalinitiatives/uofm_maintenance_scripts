@@ -318,13 +318,22 @@ function uofm_maintenance_drush_command() {
   );
   $items['uofm_maintenance_fix_dates_pp'] = array(
     'options' => array(
+      'pid' => array(
+        'description' => 'A PID to operate on',
+      ),
+      'pidlist' => array(
+        'description' => 'A comma seperated list of PIDs to operate on',
+      ),
+      'pidfile' => array(
+        'description' => 'Path to a textfile of PIDs to operate on, one per line',
+      ),
       'query' => array(
         'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
       ),
     ),
     'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(
-      UOFM_MAINTENANCE_FIX_DATES_QUEUE,
+      'uofm_maintenance_fix_dates_queue',
       FALSE,
     ),
     'description' => 'Fix the MODS subject:temporal dates on records in a collection. Does not affect sub-collections.',
@@ -343,8 +352,8 @@ function uofm_maintenance_drush_command() {
     'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
       'uofm_maintenance_fix_dates_worker',
-      UOFM_MAINTENANCE_FIX_DATES_QUEUE,
-      UOFM_MAINTENANCE_FIX_DATES_QUEUE,
+      'uofm_maintenance_fix_dates_queue',
+      'uofm_maintenance_fix_dates_timer',
       300,
     ),
     'description' => 'Process the queue of objects generated with preprocess, update the MODS datastream to alter dates. Must have privileges to update the objects.',
