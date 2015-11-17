@@ -268,3 +268,37 @@ function uofm_maintenance_update_xacml_worker($data) {
   $success = $policy_update->updatePolicy();
   return $success;
 }
+
+/**
+ *
+ */
+function uofm_maintenance_fix_dates_worker($pid) {
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $object = islandora_object_load($pid);
+      if (isset($object['MODS'])) {
+        $mods = new DOMDocument();
+        $mods->loadXML($object['MODS']->content);
+        $xpath = new DOMXpath($mods);
+        $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+        $dates = $xpath->query('//mods:subject/mods:temporal');
+        $adds = array();
+        foreach ($dates as $date) {
+          if (preg_match('/([0-9]{3}\?|[0-9]{4})/',$date, $matches)) {
+            $adds[] = '<mods:dateCreated>' . str_replace('?', 5, $matches[1]) . '</mods:dateCreated>';
+          }
+        }
+        // There is a change so update MODS and save back.
+        if (count($adds) > 0) {
+          $extension = '<mods:extension>' . implode($adds, ' ') . '</mods:extension>';
+          $new_node = dom_import_simplexml(simplexml_load_string($extension));
+          $new_node = $mods->importNode($new_node, TRUE);
+          $mods->appendChild($new_node);
+          $new_xml = $mods->saveXML();
+          $object['MODS']->content($new_xml);
+        }
+      }
+    }
+  }
+}

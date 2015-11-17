@@ -316,6 +316,44 @@ function uofm_maintenance_drush_command() {
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
+  $items['uofm_maintenance_fix_dates_pp'] = array(
+    'options' => array(
+      'query' => array(
+        'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
+      ),
+    ),
+    'callback' => 'drush_uofm_maintenance_preprocess',
+    'callback arguments' => array(
+      UOFM_MAINTENANCE_FIX_DATES_QUEUE,
+      FALSE,
+    ),
+    'description' => 'Fix the MODS subject:temporal dates on records in a collection. Does not affect sub-collections.',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
+  $items['uofm_maintenance_fix_dates_run'] = array(
+    'options' => array(
+      'timeout' => array(
+        'description' => 'Length of time to run, or until queue is empty if omitted',
+      ),
+    ),
+    'callback' => 'drush_uofm_maintenance_run',
+    'callback arguments' => array(
+      'uofm_maintenance_fix_dates_worker',
+      UOFM_MAINTENANCE_FIX_DATES_QUEUE,
+      UOFM_MAINTENANCE_FIX_DATES_QUEUE,
+      300,
+    ),
+    'description' => 'Process the queue of objects generated with preprocess, update the MODS datastream to alter dates. Must have privileges to update the objects.',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
   return $items;
 }
 
