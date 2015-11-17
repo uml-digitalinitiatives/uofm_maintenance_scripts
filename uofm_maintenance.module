@@ -127,7 +127,10 @@ function uofm_maintenance_derivative_fixer_worker($data) {
   }
   if ($obj) {
     module_load_include('inc', 'islandora', 'includes/derivatives');
-    $options = array_diff($data, array('pid' => 1));
+    $options = array_diff_key($data, array('pid' => 1));
+    if (!isset($options['force']) || (!is_bool($options['force']))) {
+      $options['force'] = FALSE;
+    }
     $results = islandora_do_derivatives($obj, $options);
     islandora_derivative_logging($results);
     return TRUE;
