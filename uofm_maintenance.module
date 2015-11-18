@@ -309,7 +309,7 @@ function uofm_maintenance_fix_dates_worker($pid) {
             // Remove commas because of 11 January, 1929 format.
             try {
               $dt = new DateTime(str_replace(',', '', $text));
-              $adds[] = '<dateCreated>' . $dt->format('Y-m-d') . '<dateCreated>';
+              $adds[] = '<dateCreated>' . $dt->format('Y-m-d') . '</dateCreated>';
             }
             catch (Exception $e) {
               drush_log(t('Could not parse (@t) for object (@p): @e', array(
