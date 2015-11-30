@@ -295,21 +295,34 @@ function uofm_maintenance_fix_dates_worker($pid) {
         $mods_top = $mods_top->item(0);
         $dates = $xpath->query('//mods:subject/mods:temporal');
         $adds = array();
+        $today = new DateTime();
         foreach ($dates as $date) {
           $text = $date->textContent;
+          $date_string = FALSE;
           // Match the date, if it is only to the decade make it a 5.
           // If the full date is there, use it otherwise append -01-01.
-          if (preg_match('/^([0-9]{2,3}\?{1,2}|[0-9]{4})([\-\/][0-9]{1,2})?([\-\/][0-9]{1,2})?/',$text, $matches)) {
+          if (preg_match('/^([0-9]{2,3}\?{1,2}|[0-9]{4})([\-\/][0-9]{1,2})?([\-\/][0-9]{1,2})?/', $text, $matches)) {
             if (strpos($matches[1], '??') === FALSE) {
-              $adds[] = '<dateCreated>' . str_replace('?', 5, $matches[1]) . (isset($matches[2]) ? $matches[2] : '-01') . (isset($matches[3]) ? $matches[3] : '-01') . '</dateCreated>';
+              $date_string = str_replace('?', 5, $matches[1]) . (isset($matches[2]) ? $matches[2] : '-01') . (isset($matches[3]) ? $matches[3] : '-01');
+            }
+          }
+          // Match MM/DD/YYYY
+          elseif (preg_match('/^([0-9\?]{1,2})\/([0-9\?]{1,2})\/([0-9\?]{4})', $text, $matches)) {
+            if (strpos($matches[3], '??') === FALSE) {
+              $date_string = str_replace('?', 5, $matches[3]) . "-" . (strpos($matches[1], '?') === FALSE ? $matches[1] : '01') . "-" . (strpos($matches[2], '?') === FALSE ? $matches[2] : '01');
             }
           }
           else {
             // Try to parse it to a DateTime.
             // Remove commas because of 11 January, 1929 format.
+            $date_string = str_replace(',', '', $text);
+          }
+          if ($date_string) {
             try {
-              $dt = new DateTime(str_replace(',', '', $text));
-              $adds[] = '<dateCreated>' . $dt->format('Y-m-d') . '</dateCreated>';
+              $dt = new DateTime($date_string);
+              if ($dt->format('Y-m-d') != $today->format('Y-m-d')) {
+                $adds[] = '<dateCreated>' . $dt->format('Y-m-d') . '</dateCreated>';
+              }
             }
             catch (Exception $e) {
               drush_log(t('Could not parse (@t) for object (@p): @e', array(
