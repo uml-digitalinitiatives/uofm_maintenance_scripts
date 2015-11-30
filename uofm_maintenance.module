@@ -307,7 +307,7 @@ function uofm_maintenance_fix_dates_worker($pid) {
             }
           }
           // Match MM/DD/YYYY
-          elseif (preg_match('/^([0-9\?]{1,2})\/([0-9\?]{1,2})\/([0-9\?]{4})', $text, $matches)) {
+          elseif (preg_match('/^([0-9\?]{1,2})\/([0-9\?]{1,2})\/([0-9\?]{4})$/', $text, $matches)) {
             if (strpos($matches[3], '??') === FALSE) {
               $date_string = str_replace('?', 5, $matches[3]) . "-" . (strpos($matches[1], '?') === FALSE ? $matches[1] : '01') . "-" . (strpos($matches[2], '?') === FALSE ? $matches[2] : '01');
             }
