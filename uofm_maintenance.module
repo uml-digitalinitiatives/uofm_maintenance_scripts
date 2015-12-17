@@ -312,6 +312,12 @@ function uofm_maintenance_fix_dates_worker($pid) {
               $date_string = str_replace('?', 5, $matches[3]) . "-" . (strpos($matches[1], '?') === FALSE ? $matches[1] : '01') . "-" . (strpos($matches[2], '?') === FALSE ? $matches[2] : '01');
             }
           }
+          // Match ca.YYYY
+          elseif (preg_match('/^ca\.\s*([0-9]{2,3}\?{1,2}|[0-9]{4})/', $text, $matches)) {
+            if (strpos($matches[1], '??') === FALSE) {
+              $date_string = str_replace('?', 5, $matches[1]) . "-01-01";
+            }
+          }
           else {
             // Try to parse it to a DateTime.
             // Remove commas because of 11 January, 1929 format.
