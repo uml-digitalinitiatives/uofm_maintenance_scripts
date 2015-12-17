@@ -347,16 +347,19 @@ function uofm_maintenance_fix_dates_worker($pid) {
           }
           $new_xml = $mods->saveXML();
           $object['MODS']->content = $new_xml;
-          return TRUE;
         }
+        else {
+          drush_log(t("No date information to add for object @p", array('@p' => $pid)), "notice");
+        }
+        return TRUE;
       }
       else {
-        drush_log(t("No MODS datastream for object %p", array('%p' => $pid)), "notice");
+        drush_log(t("No MODS datastream for object @p", array('@p' => $pid)), "notice");
         return TRUE;
       }
     }
     else {
-      drush_log(t("%p is not a valid pid", array('%p' => $pid)), "error");
+      drush_log(t("@p is not a valid pid", array('@p' => $pid)), "error");
       return FALSE;
     }
   }
