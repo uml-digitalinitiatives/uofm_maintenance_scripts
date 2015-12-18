@@ -319,7 +319,7 @@ function uofm_maintenance_fix_dates_worker($pid) {
             }
           }
           // Match ca.YYYY
-          elseif (preg_match('/^ca\.\s*([0-9]{2,3}\?{1,2}|[0-9]{4})/', $text, $matches)) {
+          elseif (preg_match('/^ca\.?\s*([0-9]{2,3}\?{1,2}|[0-9]{4})/', $text, $matches)) {
             if (strpos($matches[1], '??') === FALSE) {
               $date_string = str_replace('?', 5, $matches[1]) . "-01-01";
             }
