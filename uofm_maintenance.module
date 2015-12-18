@@ -288,7 +288,13 @@ function uofm_maintenance_fix_dates_worker($pid) {
       $object = islandora_object_load($pid);
       if (isset($object['MODS'])) {
         $mods = new DOMDocument();
-        $mods->loadXML($object['MODS']->content);
+        try {
+          $mods->loadXML($object['MODS']->content);
+        }
+        catch (Exception $e) {
+          drush_log(t("Error loading MODS for object @p: @m", array('@p' => $pid, '@m' => $e->getMessage())), 'warning');
+          return FALSE;
+        }
         $xpath = new DOMXpath($mods);
         $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
         $mods_top = $xpath->query('/mods:mods');
@@ -342,7 +348,7 @@ function uofm_maintenance_fix_dates_worker($pid) {
         // There is a change so update MODS and save back.
         if (count($adds) > 0) {
           $ext = $xpath->query('//mods:extension');
-          $extension = '<extension>' . implode($adds, ' ') . '</extension>';
+          $extension = '<extension xmlns="http://www.loc.gov/mods/v3">' . implode($adds, ' ') . '</extension>';
           $new_node = dom_import_simplexml(simplexml_load_string($extension));
           $new_node = $mods->importNode($new_node, TRUE);
           if ($ext->length > 0) {
