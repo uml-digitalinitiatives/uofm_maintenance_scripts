@@ -76,8 +76,8 @@ function uofm_maintenance_sparql_query($where) {
   drupal_static_reset('islandora_get_tuque_connection');
   $connection = islandora_get_tuque_connection();
 
-  $query = 'select ?object from <#ri> where { ';
-  $query .= $where;
+  $query = 'select DISTINCT ?object from <#ri> where { ';
+  $query .= urldecode($where);
   $query .= ' }';
 
   $temp = $connection->repository->ri->sparqlQuery($query, 'unlimited');
@@ -146,7 +146,7 @@ function uofm_maintenance_batch_index_filter(array $items) {
     module_load_include('inc', 'islandora', 'includes/utilities');
     module_load_include('php', 'islandora_solr', 'SolrPhpClient/Apache/Solr/Service');
 
-    $queue = DrupalQueue::get(UOFM_BATCH_INDEX_QUEUE);
+    $queue = DrupalQueue::get(UOFM_MAINTENANCE_BATCH_INDEX_QUEUE);
     $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
     $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
     $solr->setCreateDocuments(0);
