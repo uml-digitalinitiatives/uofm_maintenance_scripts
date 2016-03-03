@@ -563,7 +563,7 @@ function drush_uofm_maintenance_batch_index($filter = TRUE) {
   }
   if (count($results) > 0) {
     // @TODO: Hardcoding this now, should make it configurable in future.
-    $base_url = 'http://localhost:8080/uofm-camel-route/rest/reindex/';
+    $base_url = 'http://localhost:8080/fedora3-solr-indexer/reindex/';
     $user = variable_get('islandora_collection_search_gsearch_user', NULL);
     $passwd = variable_get('islandora_collection_search_gsearch_password', NULL);
     $count = 0;
