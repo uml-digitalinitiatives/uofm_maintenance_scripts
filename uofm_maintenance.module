@@ -381,3 +381,45 @@ function uofm_maintenance_fix_dates_worker($pid) {
     return FALSE;
   }
 }
+
+/**
+ * Stupid date mover, because someone typed 1969 instead of 1959.
+ */
+function uofm_maintenance_fix_MODS($pid) {
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $object = islandora_object_load($pid);
+      if (isset($object['MODS'])) {
+        module_load_include('inc', 'manidora', 'includes/utilities');
+        $mods = new DOMDocument();
+        try {
+          $mods->loadXML($object['MODS']->content);
+        }
+        catch (Exception $e) {
+          drush_log(t("Error loading MODS for object @p: @m", array('@p' => $pid, '@m' => $e->getMessage())), 'warning');
+          return FALSE;
+        }
+        $xpath = new DOMXpath($mods);
+        $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+        $date = $xpath->query('/mods:mods/mods:originInfo/mods:dateIssued');
+        $old_date = $date->item(0)->textContent;
+        $new_date = str_replace('1969', '1959', $old_date);
+        $title = $xpath->query('/mods:mods/mods:titleInfo/mods:title');
+        $title_str = str_replace($old_date, $new_date, $title->item(0)->textContent);
+
+        $patch = array(
+          'ns' => array('mods' => 'http://www.loc.gov/mods/v3'),
+          'changes' => array(
+            'replace' => array('/mods:mods/mods:titleInfo/mods:title', '/mods:mods/mods:titleInfo', '<title>' . $title_str . '</title>'),
+            'replace' => array('/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]', '/mods:mods/mods:originInfo', '<dateIssued encoding="iso8601">' . $new_date . '</dateIssued>'),
+            'replace' => array('/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]', '/mods:mods/mods:relatedItem[@type="host"]/mods:part', '<date encoding="iso8601">' . $new_date . '</date>'),
+          ),
+        );
+        
+        $new_mods = manidora_xml_patcher($patch, $mods);
+        $object['MODS']->content = $new_mods;
+      }
+    }
+  }
+}
