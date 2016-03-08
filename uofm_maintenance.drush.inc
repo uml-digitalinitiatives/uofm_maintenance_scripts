@@ -363,7 +363,7 @@ function uofm_maintenance_drush_command() {
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
-  $items['uofm_maintenance_mods_date_change_pp'] = array(
+  $items['uofm_maintenance_mods_change_dates_pp'] = array(
     'options' => array(
       'pid' => array(
         'description' => 'A PID to operate on',

@@ -391,10 +391,11 @@ function uofm_maintenance_fix_MODS($pid) {
     if (islandora_is_valid_pid($pid)) {
       $object = islandora_object_load($pid);
       if (isset($object['MODS'])) {
-        module_load_include('inc', 'manidora', 'includes/utilities');
+        module_load_include('inc', 'manidora', 'includes/XMLParser.class');
+        $mods_content = $object['MODS']->content;
         $mods = new DOMDocument();
         try {
-          $mods->loadXML($object['MODS']->content);
+          $mods->loadXML($mods_content);
         }
         catch (Exception $e) {
           drush_log(t("Error loading MODS for object @p: @m", array('@p' => $pid, '@m' => $e->getMessage())), 'warning');
@@ -409,16 +410,23 @@ function uofm_maintenance_fix_MODS($pid) {
         $title_str = str_replace($old_date, $new_date, $title->item(0)->textContent);
 
         $patch = array(
-          'ns' => array('mods' => 'http://www.loc.gov/mods/v3'),
-          'changes' => array(
-            'replace' => array('/mods:mods/mods:titleInfo/mods:title', '/mods:mods/mods:titleInfo', '<title>' . $title_str . '</title>'),
-            'replace' => array('/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]', '/mods:mods/mods:originInfo', '<dateIssued encoding="iso8601">' . $new_date . '</dateIssued>'),
-            'replace' => array('/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]', '/mods:mods/mods:relatedItem[@type="host"]/mods:part', '<date encoding="iso8601">' . $new_date . '</date>'),
+             'ns' => array('mods' => 'http://www.loc.gov/mods/v3'),
+             'changes' => array(
+                 array('type' => 'replace', 'old' => '/mods:mods/mods:titleInfo/mods:title', 'new' => '<title>' . $title_str . '</title>'),
+              array('type' => 'replace', 'old' => '/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]', 'new' => '<dateIssued encoding="iso8601">' . $new_date . '</dateIssued>'),
+              array('type' => 'replace', 'old' => '/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]', 'new' => '<date encoding="iso8601">' . $new_date . '</date>'),
           ),
         );
         
-        $new_mods = manidora_xml_patcher($patch, $mods);
-        $object['MODS']->content = $new_mods;
+        $new_mods = \umanitoba\manidora\XMLPatcher::patch($mods_content, $patch);
+        if ($new_mods != '<?xml version="1.0" encoding="utf-8"?>' && strpos($new_mods, 'http://www.loc.gov/mods/v3') > 0) {
+            $object['MODS']->content = $new_mods;
+            return TRUE;
+        }
+        else {
+            drush_log(t('MODS for !pid was wiped so we didn\'t save it.', array('!pid' => $pid)), 'error');
+            return FALSE;
+        }
       }
     }
   }
