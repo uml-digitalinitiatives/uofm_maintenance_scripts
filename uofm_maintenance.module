@@ -4,6 +4,8 @@
  * Contains hooks and functions
  */
 
+require_once drupal_get_path('module', 'manidora') . '/src/XMLPatcher.class.inc';
+
 /**
  * Fix tiffs queue
  */
@@ -390,8 +392,11 @@ function uofm_maintenance_fix_MODS($pid) {
     module_load_include('inc', 'islandora', 'includes/utilities');
     if (islandora_is_valid_pid($pid)) {
       $object = islandora_object_load($pid);
+      $label = $object->label;
+      if (str_replace('1969', '1959', $label) != $label) {
+        $object->label = str_replace('1969', '1959', $label);
+      }
       if (isset($object['MODS'])) {
-        module_load_include('inc', 'manidora', 'includes/XMLParser.class');
         $mods_content = $object['MODS']->content;
         $mods = new DOMDocument();
         try {
@@ -417,17 +422,43 @@ function uofm_maintenance_fix_MODS($pid) {
               array('type' => 'replace', 'old' => '/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]', 'new' => '<date encoding="iso8601">' . $new_date . '</date>'),
           ),
         );
-        
-        $new_mods = \umanitoba\manidora\XMLPatcher::patch($mods_content, $patch);
+        try {
+          $new_mods = \umanitoba\manidora\XMLPatcher::patch($mods_content, $patch);
+        }
+        catch (\umanitoba\manidora\XMLPatcherException $e) {
+          drush_log(t('MODS patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
+          return FALSE;
+        }
         if ($new_mods != '<?xml version="1.0" encoding="utf-8"?>' && strpos($new_mods, 'http://www.loc.gov/mods/v3') > 0) {
             $object['MODS']->content = $new_mods;
-            return TRUE;
         }
         else {
             drush_log(t('MODS for !pid was wiped so we didn\'t save it.', array('!pid' => $pid)), 'error');
             return FALSE;
         }
       }
+      if (isset($object['DC']) && isset($new_date) && isset($title_str)) {
+        $dc_content = $object['DC']->content;
+        $patch = array(
+          'ns' => array(
+            'oai_dc' => 'http://www.openarchives.org/OAI/2.0/oai_dc/',
+            'dc' => 'http://purl.org/dc/elements/1.1/',
+          ),
+          'changes' => array(
+            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:title', '<dc:title>' . $title_str . '</dc:title>'),
+            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:date', '<dc:date>' . $new_date . '</dc:date>'),
+          ),
+        );
+        
+        try {
+          $new_dc = \umanitoba\manidora\XMLPatcher::patch($dc_content, $patch);
+        }
+        catch (\umanitoba\manidora\XMLPatcherException $e) {
+          drush_log(t('DC patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
+          return FALSE;
+        }
+      }
+      return TRUE;
     }
   }
 }
