@@ -424,17 +424,11 @@ function uofm_maintenance_fix_MODS($pid) {
         );
         try {
           $new_mods = \umanitoba\manidora\XMLPatcher::patch($mods_content, $patch);
+          $object['MODS']->content = $new_mods;
         }
         catch (\umanitoba\manidora\XMLPatcherException $e) {
           drush_log(t('MODS patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
           return FALSE;
-        }
-        if ($new_mods != '<?xml version="1.0" encoding="utf-8"?>' && strpos($new_mods, 'http://www.loc.gov/mods/v3') > 0) {
-            $object['MODS']->content = $new_mods;
-        }
-        else {
-            drush_log(t('MODS for !pid was wiped so we didn\'t save it.', array('!pid' => $pid)), 'error');
-            return FALSE;
         }
       }
       if (isset($object['DC']) && isset($new_date) && isset($title_str)) {
@@ -445,13 +439,14 @@ function uofm_maintenance_fix_MODS($pid) {
             'dc' => 'http://purl.org/dc/elements/1.1/',
           ),
           'changes' => array(
-            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:title', '<dc:title>' . $title_str . '</dc:title>'),
-            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:date', '<dc:date>' . $new_date . '</dc:date>'),
+            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:title', 'new' => '<dc:title>' . $title_str . '</dc:title>'),
+            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:date', 'new' => '<dc:date>' . $new_date . '</dc:date>'),
           ),
         );
         
         try {
           $new_dc = \umanitoba\manidora\XMLPatcher::patch($dc_content, $patch);
+          $object['DC']->content = $new_dc;
         }
         catch (\umanitoba\manidora\XMLPatcherException $e) {
           drush_log(t('DC patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
