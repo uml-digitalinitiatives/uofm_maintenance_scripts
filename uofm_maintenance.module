@@ -4,8 +4,6 @@
  * Contains hooks and functions
  */
 
-require_once drupal_get_path('module', 'manidora') . '/src/XMLPatcher.class.inc';
-
 /**
  * Fix tiffs queue
  */
@@ -423,10 +421,10 @@ function uofm_maintenance_fix_MODS($pid) {
           ),
         );
         try {
-          $new_mods = \umanitoba\manidora\XMLPatcher::patch($mods_content, $patch);
+          $new_mods = \Drupal\manidora\XMLPatcher::patch($mods_content, $patch);
           $object['MODS']->content = $new_mods;
         }
-        catch (\umanitoba\manidora\XMLPatcherException $e) {
+        catch (\Drupal\manidora\XMLPatcherException $e) {
           drush_log(t('MODS patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
           return FALSE;
         }
@@ -445,14 +443,15 @@ function uofm_maintenance_fix_MODS($pid) {
         );
         
         try {
-          $new_dc = \umanitoba\manidora\XMLPatcher::patch($dc_content, $patch);
+          $new_dc = \Drupal\manidora\XMLPatcher::patch($dc_content, $patch);
           $object['DC']->content = $new_dc;
         }
-        catch (\umanitoba\manidora\XMLPatcherException $e) {
+        catch (\Drupal\manidora\XMLPatcherException $e) {
           drush_log(t('DC patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
           return FALSE;
         }
       }
+      drush_log(t('Patched - !pid', array('!pid' => $pid)), 'ok');
       return TRUE;
     }
   }
