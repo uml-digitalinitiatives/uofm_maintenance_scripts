@@ -1,0 +1,7 @@
+name = "UofM Export MODS"
+description = "A drush script to export MODS records"
+dependencies[] = islandora
+dependencies[] = uofm_maintenance_scripts
+package = Islandora Local Customization
+version = 7.x-dev
+core = 7.x
