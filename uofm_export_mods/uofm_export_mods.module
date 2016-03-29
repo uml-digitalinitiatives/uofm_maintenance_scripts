@@ -4,15 +4,15 @@ function uofm_export_mods_custom_queue($pid) {
   $add_hdl = $add_pid = FALSE;
   if (!is_null(drush_get_option('add_ids', NULL))) {
     // We want to add both handle and pid to MODS.
-    $add_hdl = $add_pid = TRUE;
+    $add_hdl = $add_pid = 1;
   }
   else {
     if (!is_null(drush_get_option('add_handle', NULL))) {
       // Add handle
-      $add_hdl = TRUE;
+      $add_hdl = 1;
     }
     if (!is_null(drush_get_option('add_pid', NULL))) {
-      $add_pid = TRUE;
+      $add_pid = 1;
     }
   }
   return array('pid' => $pid, 'add_hdl' => $add_hdl, 'add_pid' => $add_pid, 'dir' => drush_get_option('directory', NULL));
@@ -39,14 +39,15 @@ function uofm_export_mods_worker($data) {
     if (isset($obj['MODS'])) {
       $mods_content = $obj['MODS']->content;
       $mods = new DOMDocument();
-      $mods->load($mods_content);
+      $mods->loadXML($mods_content);
       $xpath = new DOMXPath($mods);
       $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
       $patch = array();
-      if ($data['add_hdl'] === TRUE) {
+      if ($data['add_hdl'] == 1) {
+        drush_log("do add handle", "ok");
         $hits = $xpath->query('//mods:identifier[@type="hdl"]');
-        if (count($hits) == 0) {
-          drush_log(t('No hdl in %p, adding.', array('%p' => $data['pid'])));
+        if ($hits->length == 0) {
+          drush_log(t('No hdl in !p, adding.', array('!p' => $data['pid'])));
           $hdl = "10719/" . explode(':', $data['pid'])[1];
           $patch['ns'] = array(
             'mods' => 'http://www.loc.gov/mods/v3',
@@ -55,22 +56,24 @@ function uofm_export_mods_worker($data) {
             array('type' => 'add', 'parent' => '/mods:mods', 'new' => '<mods:identifier type="hdl">10719/' . $hdl . '</mods:identifier>'),
           );
         }
+
       }
-      if ($data['add_pid'] === TRUE) {
+      if ($data['add_pid'] == 1) {
+        drush_log("do add pid", "ok");
         $hits = $xpath->query('//mods:identifier[@type="pid"]');
-        if (count($hits) == 0) {
-          drush_log(t('No pid in %p, adding.', array('%p' => $data['pid'])));
+        if ($hits->length == 0) {
+          drush_log(t('No pid in !p, adding.', array('!p' => $data['pid'])));
           if (!isset($patch['ns']) || !array_key_exists('mods', $patch['ns'])) {
             $patch['ns'] = array(
               'mods' => 'http://www.loc.gov/mods/v3',
             );
           }
           if (isset($patch['changes']) && is_array($patch['changes'])) {
-            $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => '<mods:identifier type="hdl">10719/' . $hdl . '</mods:identifier>');
+            $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => '<mods:identifier type="pid">' . $data['pid'] . '</mods:identifier>');
           }
           else {
             $patch['changes'] = array(
-              array('type' => 'add', 'parent' => '/mods:mods', 'new' => '<mods:identifier type="hdl">10719/' . $hdl . '</mods:identifier>'),
+              array('type' => 'add', 'parent' => '/mods:mods', 'new' => '<mods:identifier type="pid">' . $data['pid'] . '</mods:identifier>'),
             );
           }
         }
@@ -82,24 +85,24 @@ function uofm_export_mods_worker($data) {
           $mods_content = $new_mods;
         }
         catch (\Drupal\manidora\XMLPatcherException $e) {
-          drush_log(t('Error patching MODS record %p: %e', array('%p' => $data['pid'], '%e' => $e->getMessage())), 'error');
+          drush_log(t('Error patching MODS record !p: !e', array('!p' => $data['pid'], '!e' => $e->getMessage())), 'error');
           return FALSE;
         }
       }
       if (file_exists($data['dir']) && is_dir($data['dir'])) {
         $filename = rtrim($data['dir'], '/') . '/' . str_replace(':', '_', $data['pid']) . '_MODS.xml';
         if (file_put_contents($filename, $mods_content) === FALSE) {
-          drush_log(t('Failed to create file %fn', array('%fn' => $filename)), 'error');
+          drush_log(t('Failed to create file !fn', array('!fn' => $filename)), 'error');
           return FALSE;
         }
       }
     }
     else {
-      drush_log(t('Object %p has no MODS field', array('%p' => $data['pid'])));
+      drush_log(t('Object !p has no MODS field', array('!p' => $data['pid'])));
     }
   }
   else {
-    drush_log(t('Error loading pid %p', array('%p' => $data['pid'])), 'error');
+    drush_log(t('Error loading pid !p', array('!p' => $data['pid'])), 'error');
     return FALSE;
   }
   return TRUE;

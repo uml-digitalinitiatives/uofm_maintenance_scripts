@@ -3,7 +3,7 @@
 /**
  * Implements hook_drush_command().
  */
-function uofm_export_mods_command() {
+function uofm_export_mods_drush_command() {
   $items = array();
   
   $items['uofm_export_mods_preprocess'] = array(
@@ -40,18 +40,18 @@ function uofm_export_mods_command() {
     'aliases' => array('uofm_export_mods_pp'),
     'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(
-      'uofm_export_mods',
+      'uofm_export_mods_queue',
       FALSE,
       'uofm_export_mods_custom_queue',
     ),
     'description' => 'Add a list of objects to a queue to have the MODS records exported.',
     'drupal dependencies' => array(
       'islandora',
-      'uofm_export_mods'
+      'uofm_export_mods',
     ),
     'drush dependencies' => array(
-      'uofm_maintenance_scripts'
-    )
+      'uofm_maintenance'
+    ),
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
@@ -64,7 +64,7 @@ function uofm_export_mods_command() {
     ),
     'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
-      'drush_uofm_export_mods_worker',
+      'uofm_export_mods_worker',
       'uofm_export_mods_queue',
       'uofm_export_mods_timer',
       300,
@@ -75,7 +75,7 @@ function uofm_export_mods_command() {
       'uofm_export_mods'
     ),
     'drush dependencies' => array(
-      'uofm_maintenance_scripts'
+      'uofm_maintenance'
     ),
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
