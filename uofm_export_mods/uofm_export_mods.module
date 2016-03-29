@@ -4,15 +4,15 @@ function uofm_export_mods_custom_queue($pid) {
   $add_hdl = $add_pid = FALSE;
   if (!is_null(drush_get_option('add_ids', NULL))) {
     // We want to add both handle and pid to MODS.
-    $add_hdl = $add_pid = 1;
+    $add_hdl = $add_pid = TRUE;
   }
   else {
-    if (!is_null(drush_get_option('add_handle', NULL))) {
+    if (!is_null(drush_get_option('add_hdl', NULL))) {
       // Add handle
-      $add_hdl = 1;
+      $add_hdl = TRUE;
     }
     if (!is_null(drush_get_option('add_pid', NULL))) {
-      $add_pid = 1;
+      $add_pid = TRUE;
     }
   }
   return array('pid' => $pid, 'add_hdl' => $add_hdl, 'add_pid' => $add_pid, 'dir' => drush_get_option('directory', NULL));
@@ -43,8 +43,7 @@ function uofm_export_mods_worker($data) {
       $xpath = new DOMXPath($mods);
       $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
       $patch = array();
-      if ($data['add_hdl'] == 1) {
-        drush_log("do add handle", "ok");
+      if ($data['add_hdl'] === TRUE) {
         $hits = $xpath->query('//mods:identifier[@type="hdl"]');
         if ($hits->length == 0) {
           drush_log(t('No hdl in !p, adding.', array('!p' => $data['pid'])));
@@ -53,13 +52,12 @@ function uofm_export_mods_worker($data) {
             'mods' => 'http://www.loc.gov/mods/v3',
           );
           $patch['changes'] = array(
-            array('type' => 'add', 'parent' => '/mods:mods', 'new' => '<mods:identifier type="hdl">10719/' . $hdl . '</mods:identifier>'),
+            array('type' => 'add', 'parent' => '/mods:mods', 'new' => '<mods:identifier type="hdl">' . $hdl . '</mods:identifier>'),
           );
         }
 
       }
-      if ($data['add_pid'] == 1) {
-        drush_log("do add pid", "ok");
+      if ($data['add_pid'] === TRUE) {
         $hits = $xpath->query('//mods:identifier[@type="pid"]');
         if ($hits->length == 0) {
           drush_log(t('No pid in !p, adding.', array('!p' => $data['pid'])));
