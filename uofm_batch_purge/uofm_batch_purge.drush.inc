@@ -4,6 +4,9 @@
  * Drush script to purge objects.
  */
 
+/**
+ * Implements hook_drush_command().
+ */
 function uofm_batch_purge_drush_command() {
    $items = array();
 
@@ -44,7 +47,7 @@ function uofm_batch_purge_drush_command() {
      'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
    );
   
-   $items['uofm_batch_purge_process'] = array(
+   $items['uofm_batch_purge_run'] = array(
      'options' => array(
        'timeout' => array(
          'description' => 'Length of time to run, or until queue is empty if omitted',

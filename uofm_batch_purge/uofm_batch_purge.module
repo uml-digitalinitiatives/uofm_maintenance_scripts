@@ -4,11 +4,29 @@
  * UofM Batch Purge functions.
  */
 
+/**
+ * Create a custom queue item.
+ *
+ * @var string $pid
+ *   The object ID to purge.
+ *
+ * @return array
+ *   The array of pid and remove_orphan choice.
+ */
 function uofm_batch_purge_custom_queue($pid) {
   $remove_orphans = (bool)drush_get_option('remove_orphans', FALSE);
   return array('pid' => $pid, 'remove_orphans' => $remove_orphans);
 }
 
+/**
+ * Worker that does the purging.
+ *
+ * @var array $data
+ *   The output from the custom queue function.
+ *
+ * @return bool
+ *   True on success, False on failure.
+ */
 function uofm_batch_purge_worker($data) {
   module_load_include('inc', 'islandora', 'includes/utilities');
   if (!islandora_is_valid_pid($data['pid'])) {
@@ -49,6 +67,18 @@ function uofm_batch_purge_worker($data) {
   return FALSE;
 }
 
+/**
+ * Get the children of an object to be purged.
+ *
+ * @var AbstractFedoraObject $object
+ *   The object to be purged.
+ * @var int $offset
+ *   The page of results to return.
+ *
+ * @return array
+ *   Array of objects that are children of $object.
+ *   False if no children found.
+ */
 function uofm_batch_purge_get_children(AbstractFedoraObject $object, $offset = 0) {
   $actual_offset = 5000 * $offset;
   $sparql =<<<EOF
