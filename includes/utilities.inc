@@ -166,7 +166,7 @@ function uofm_maintenance_batch_index_filter(array $items) {
     while (($index * $set_size) < count($items)) {
       $slice = array_slice($items, ($index * $set_size), $set_size);
       // Make a long string of colon escaped PIDs.
-      $query_pids = implode(array_map($add_pids, $slice), " OR ");
+      $query_pids = implode(array_map($add_pid, $slice), " OR ");
       // Search for all the possible PIDs.
       $solr_query = "($query_pids)";
       $solr_params = array('fl' => 'PID', 'rows' => $set_size);
