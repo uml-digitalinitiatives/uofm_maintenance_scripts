@@ -28,17 +28,14 @@ define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE', 'uofm_maintenance_derivative_f
 define('UOFM_MAINTENANCE_DERIVATIVE_FIXER_TIMER', UOFM_MAINTENANCE_DERIVATIVE_FIXER_QUEUE);
 
 /**
- * Implements hook_cron_queue_info().
- *
- * We re-index objects using the cron runs.
+ * Update parent queue.
  */
-function uofm_maintenance_cron_queue_info() {
-  $queues[UOFM_MAINTENANCE_BATCH_INDEX_QUEUE] = array(
-    'worker callback' => 'uofm_mainteance_batch_index_worker',
-    'time' => 180,
-  );
-  return $queues;
-}
+define('UOFM_MAINTENANCE_UPDATE_PARENT_QUEUE', 'uofm_maintenance_update_parent');
+
+/**
+ * Propogate XACML.
+ */
+define('UOFM_MAINTENANCE_COPY_XACML_QUEUE', 'uofm_maintenance_copy_xacml');
 
 /**
  * Correct any incorrect image/tiff mimetypes.
@@ -95,66 +92,367 @@ function uofm_maintenance_regen_jp2_worker($object) {
 }
 
 /**
+ * Custom queue generation for derivative fixer.
+ *
+ * @var $pid string
+ *   An object pid to process
+ * @return array
+ *   An array for the derivative fixer worker.
+ */
+function uofm_maintenance_derivative_fixer_queue($pid) {
+  $force = drush_get_option('force', NULL);
+  $item = array(
+    'pid' => $pid,
+    'force' => (bool) (!is_null($force)),
+  );
+  if (!is_null(drush_get_option('source_dsid', NULL))) {
+    $item['source_dsid'] = drush_get_option('source_dsid', '');
+  }
+  return $item;
+}
+
+/**
  * Generate any missing derivatives.
  *
- * @param string|AbstractObject $object
- *   the string PID or a Fedora Object
+ * @param array $data
+ *   array with keys 'pid' and 'force'
  */
-function uofm_maintenance_derivative_fixer_worker($object) {
+function uofm_maintenance_derivative_fixer_worker($data) {
   $obj = FALSE;
-  if (is_string($object)) {
+  if (array_key_exists('pid', $data) && is_string($data['pid'])) {
     module_load_include('inc', 'islandora', 'includes/utilities');
-    if (islandora_is_valid_pid($object)) {
-      $obj = islandora_object_load($object);
+    if (islandora_is_valid_pid($data['pid'])) {
+      $obj = islandora_object_load($data['pid']);
     }
-  }
-  if (is_a($object, 'AbstractObject')) {
-    $obj = $object;
   }
   if ($obj) {
     module_load_include('inc', 'islandora', 'includes/derivatives');
-    islandora_do_derivatives($obj, array('force' => FALSE));
+    $options = array_diff_key($data, array('pid' => 1));
+    if (!isset($options['force']) || (!is_bool($options['force']))) {
+      $options['force'] = FALSE;
+    }
+    $results = islandora_do_derivatives($obj, $options);
+    islandora_derivative_logging($results);
     return TRUE;
   }
   return FALSE;
 }
 
 /**
- * Initiate a re-index of the object.
- *
- * @param string|AbstractObject $object
- *   the string PID or a Fedora Object
+ * Custome queue item builder.
  */
-function uofm_maintenance_batch_index_worker($object) {
-  $obj = FALSE;
-  if (is_string($object)) {
+function uofm_maintenance_update_parent_custom_queue($pid) {
+  $relation_uri = drush_get_option('parent_relationship_uri', 'info:fedora/fedora-system:def/relations-external#');
+  $relation_pred = drush_get_option('parent_relationship_pred', 'isMemberOf');
+  $old_parent = drush_get_option('old_parent', NULL);
+  $new_parent = drush_get_option('new_parent', NULL);
+  $update_xacml = (bool) (!is_null(drush_get_option('update_xacml', NULL)));
+  return array(
+    'relation_uri' => $relation_uri,
+    'relation_pred' => $relation_pred,
+    'old_parent' => $old_parent,
+    'new_parent' => $new_parent,
+    'update_xacml' => $update_xacml,
+    'pid' => $pid,
+  );
+}
+
+/**
+ * Replace/add a parent to the object.
+ *
+ * @param array $data
+ *   array with keys:
+ *
+ *   'pid' => pid to act on,
+ *   'relation_uri' => relation URI to use,
+ *   'relation_pred' => relation predicate to use,
+ *   'old_parent' => parent to replace (if exists),
+ *   'new_parent' => parent to add,
+ *   'update_xacml' => copy POLICY from the new parent,
+ */
+function uofm_maintenance_update_parent_worker($data) {
+  $key_template = array(
+    'pid' => 'test',
+    'relation_uri' => 'test',
+    'relation_pred' => 'test',
+    'new_parent' => 'test',
+    'update_xacml' => TRUE,
+  );
+  if (count(array_intersect_key($data, $key_template)) != 5) {
+    drush_log("Invalid array passed to the update_parent_worker", "error");
+    return FALSE;
+  }
+  $pid = $data['pid'];
+  if (is_string($pid)) {
     module_load_include('inc', 'islandora', 'includes/utilities');
-    if (islandora_is_valid_pid($object)) {
-      $obj = islandora_object_load($object);
+    if (islandora_is_valid_pid($pid)) {
+        $object = islandora_object_load($pid);
     }
   }
-  if (is_a($object, 'AbstractObject')) {
-    $obj = $object;
+  if (!is_a($object, 'AbstractObject')) {
+    drush_log("Did not load object properly in update_parent_worker", "error");
+    return FALSE;
   }
-  if ($obj) {
-    $url = variable_get('islandora_collection_search_gsearch_endpoint', 'http://localhost:8080/fedoragsearch/rest');
-    $user = variable_get('islandora_collection_search_gsearch_user', NULL);
-    $passwd = variable_get('islandora_collection_search_gsearch_password', NULL);
-    $ch = curl_init();
-    $params = array(
-      "operation" => "updateIndex",
-      "action" => "fromPid",
-      "value" => $object,
-    );
-    curl_setopt($ch, CURLOPT_URL, $url . "?" . http_build_query($params));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_HEADER, 0);
-    curl_setopt($ch, CURLOPT_USERPWD, "$user:$passwd");
-    $res = curl_exec($ch);
-    curl_close($ch);
+  $new_parent = $data['new_parent'];
+  if (!(strpos($new_parent, "info:fedora/") == 0)) {
+    $new_parent = "info:fedora/$new_parent";
+  }
 
-    if ($res === FALSE) {
-      watchdog('uofm_maintenance', 'Error re-indexing @o', array('@o' => $object));
+  if (isset($data['old_parent'])) {
+    $old_parent = $data['old_parent'];
+    if (!(strpos($old_parent, "info:fedora/") == 0)) {
+      $old_parent = "info:fedora/$old_parent";
+    }
+    if (count($object->relationships->get($data['relation_uri'], $data['relation_pred'])) > 0) {
+      $object->relationships->remove($data['relation_uri'], $data['relation_pred'], $old_parent);
+    }
+  }
+  $object->relationships->add($data['relation_uri'], $data['relation_pred'], $new_parent);
+  $result = TRUE;
+  if (module_exists('islandora_xacml_editor') && $data['update_xacml']) {
+    $result = uofm_maintenance_update_xacml_worker(array('from' => $data['new_parent'], 'to' => $pid));
+  }
+  return $result;
+}
+
+/**
+ * XACML queue custom builder.
+ *
+ * @param string $pid
+ *   the PID for this action.
+ */
+function uofm_maintenance_copy_xacml_custom_queue($pid) {
+  $from = drush_get_option('from_pid', NULL);
+  if (is_null($from)) {
+    drush_set_error("--from_pid must be set.");
+  }
+  return array('to' => $pid, 'from' => $from);
+}
+
+/**
+ * Copies XACML policy from one object to another.
+ *
+ * @param array $data
+ *   array with keys ('from' and 'to') and values as the objects or PIDs.
+ * @return bool
+ *   Was it successful.
+ */
+function uofm_maintenance_update_xacml_worker($data) {
+  if (!module_exists('islandora_xacml_editor')) {
+    return FALSE;
+  }
+  if (!is_array($data) || !array_key_exists('from', $data) || !array_key_exists('to', $data)) {
+    return FALSE;
+  }
+  $from = $data['from'];
+  $to = $data['to'];
+  $loader = function($object) {
+    if (is_string($object)) {
+      module_load_include('inc', 'islandora', 'includes/utilities');
+      if (islandora_is_valid_pid($object)) {
+        return islandora_object_load($object);
+      }
+    }
+    if (is_a($object, 'AbstractObject')) {
+      return $object;
+    }
+  };
+  $from_obj = $loader($from);
+  if (!isset($from_obj['POLICY'])) {
+    return FALSE;
+  }
+  module_load_include('inc', 'islandora_xacml_editor', 'includes/batch');
+  $to_obj = $loader($to);
+  $xml = $from_obj['POLICY']->content;
+  $policy_update = new IslandoraUpdatePolicy($to_obj->id, $xml);
+  $success = $policy_update->updatePolicy();
+  return $success;
+}
+
+/**
+ *
+ * Fix dates for faceting.
+ *
+ * Copy full mods:subject/mods:temporal dates, if YYY? make YYY5
+ *
+ * @param $pid string
+ *   The pid of the object to process
+ *
+ * return boolean
+ *   Did it succeed?
+ */
+function uofm_maintenance_fix_dates_worker($pid) {
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $object = islandora_object_load($pid);
+      if (isset($object['MODS'])) {
+        $mods = new DOMDocument();
+        try {
+          $mods->loadXML($object['MODS']->content);
+        }
+        catch (Exception $e) {
+          drush_log(t("Error loading MODS for object @p: @m", array('@p' => $pid, '@m' => $e->getMessage())), 'warning');
+          return FALSE;
+        }
+        $xpath = new DOMXpath($mods);
+        $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+        $mods_top = $xpath->query('/mods:mods');
+        $mods_top = $mods_top->item(0);
+        $dates = $xpath->query('//mods:subject/mods:temporal');
+        $adds = array();
+        $today = new DateTime();
+        foreach ($dates as $date) {
+          $text = $date->textContent;
+          $date_string = FALSE;
+          // Match the date, if it is only to the decade make it a 5.
+          // If the full date is there, use it otherwise append -01-01.
+          if (preg_match('/^([0-9]{2,3}\?{1,2}|[0-9]{4})([\-\/][0-9]{1,2})?([\-\/][0-9]{1,2})?/', $text, $matches)) {
+            if (strpos($matches[1], '??') === FALSE) {
+              $date_string = str_replace('?', 5, $matches[1]) . (isset($matches[2]) ? $matches[2] : '-01') . (isset($matches[3]) ? $matches[3] : '-01');
+            }
+          }
+          // Match MM/DD/YYYY
+          elseif (preg_match('/^([0-9\?]{1,2})\/([0-9\?]{1,2})\/([0-9\?]{4})$/', $text, $matches)) {
+            if (strpos($matches[3], '??') === FALSE) {
+              $date_string = str_replace('?', 5, $matches[3]) . "-" . (strpos($matches[1], '?') === FALSE ? $matches[1] : '01') . "-" . (strpos($matches[2], '?') === FALSE ? $matches[2] : '01');
+            }
+          }
+          // Match ca.YYYY
+          elseif (preg_match('/^ca\.?\s*([0-9]{2,3}\?{1,2}|[0-9]{4})/i', $text, $matches)) {
+            if (strpos($matches[1], '??') === FALSE) {
+              $date_string = str_replace('?', 5, $matches[1]) . "-01-01";
+            }
+          }
+          // Must have at least one digit or skip it.
+          else if (preg_match('/\d/', $text)){
+            // Try to parse it to a DateTime.
+            // Remove commas because of 11 January, 1929 format.
+            $date_string = str_replace(',', '', $text);
+          }
+          if ($date_string) {
+            try {
+              $dt = new DateTime($date_string);
+              if ($dt->format('Y-m-d') != $today->format('Y-m-d')) {
+                $adds[] = '<dateCreated>' . $dt->format('Y-m-d') . '</dateCreated>';
+              }
+            }
+            catch (Exception $e) {
+              drush_log(t('Could not parse (@t) for object (@p): @e', array(
+                '@p' => $pid,
+                '@t' => $text,
+                '@e' => $e->getMessage(),
+              )), 'error');
+            }
+          }
+        }
+        // There is a change so update MODS and save back.
+        if (count($adds) > 0) {
+          $ext = $xpath->query('//mods:extension');
+          $extension = '<extension xmlns="http://www.loc.gov/mods/v3">' . implode($adds, ' ') . '</extension>';
+          $new_node = dom_import_simplexml(simplexml_load_string($extension));
+          $new_node = $mods->importNode($new_node, TRUE);
+          if ($ext->length > 0) {
+            $mods_top->replaceChild($new_node, $ext->item(0));
+          }
+          else {
+            $mods_top->appendChild($new_node);
+          }
+          $new_xml = $mods->saveXML();
+          $object['MODS']->content = $new_xml;
+        }
+        else {
+          drush_log(t("No date information to add for object @p", array('@p' => $pid)), "notice");
+        }
+        return TRUE;
+      }
+      else {
+        drush_log(t("No MODS datastream for object @p", array('@p' => $pid)), "notice");
+        return TRUE;
+      }
+    }
+    else {
+      drush_log(t("@p is not a valid pid", array('@p' => $pid)), "error");
+      return FALSE;
+    }
+  }
+  else {
+    drush_log("Did not receive a string pid", "error");
+    return FALSE;
+  }
+}
+
+/**
+ * Stupid date mover, because someone typed 1969 instead of 1959.
+ */
+function uofm_maintenance_fix_MODS($pid) {
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $object = islandora_object_load($pid);
+      $label = $object->label;
+      if (str_replace('1969', '1959', $label) != $label) {
+        $object->label = str_replace('1969', '1959', $label);
+      }
+      if (isset($object['MODS'])) {
+        $mods_content = $object['MODS']->content;
+        $mods = new DOMDocument();
+        try {
+          $mods->loadXML($mods_content);
+        }
+        catch (Exception $e) {
+          drush_log(t("Error loading MODS for object @p: @m", array('@p' => $pid, '@m' => $e->getMessage())), 'warning');
+          return FALSE;
+        }
+        $xpath = new DOMXpath($mods);
+        $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+        $date = $xpath->query('/mods:mods/mods:originInfo/mods:dateIssued');
+        $old_date = $date->item(0)->textContent;
+        $new_date = str_replace('1969', '1959', $old_date);
+        $title = $xpath->query('/mods:mods/mods:titleInfo/mods:title');
+        $title_str = str_replace($old_date, $new_date, $title->item(0)->textContent);
+
+        $patch = array(
+             'ns' => array('mods' => 'http://www.loc.gov/mods/v3'),
+             'changes' => array(
+                 array('type' => 'replace', 'old' => '/mods:mods/mods:titleInfo/mods:title', 'new' => '<title>' . $title_str . '</title>'),
+              array('type' => 'replace', 'old' => '/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]', 'new' => '<dateIssued encoding="iso8601">' . $new_date . '</dateIssued>'),
+              array('type' => 'replace', 'old' => '/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]', 'new' => '<date encoding="iso8601">' . $new_date . '</date>'),
+          ),
+        );
+        try {
+          $new_mods = \Drupal\manidora\XMLPatcher::patch($mods_content, $patch);
+          $object['MODS']->content = $new_mods;
+        }
+        catch (\Drupal\manidora\XMLPatcherException $e) {
+          drush_log(t('MODS patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
+          return FALSE;
+        }
+      }
+      if (isset($object['DC']) && isset($new_date) && isset($title_str)) {
+        $dc_content = $object['DC']->content;
+        $patch = array(
+          'ns' => array(
+            'oai_dc' => 'http://www.openarchives.org/OAI/2.0/oai_dc/',
+            'dc' => 'http://purl.org/dc/elements/1.1/',
+          ),
+          'changes' => array(
+            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:title', 'new' => '<dc:title>' . $title_str . '</dc:title>'),
+            array('type' => 'replace', 'old' => '/oai_dc:dc/dc:date', 'new' => '<dc:date>' . $new_date . '</dc:date>'),
+          ),
+        );
+        
+        try {
+          $new_dc = \Drupal\manidora\XMLPatcher::patch($dc_content, $patch);
+          $object['DC']->content = $new_dc;
+        }
+        catch (\Drupal\manidora\XMLPatcherException $e) {
+          drush_log(t('DC patch for !pid failed: !e', array('!pid' => $pid, '!e' => $e->getMessage())), 'error');
+          return FALSE;
+        }
+      }
+      drush_log(t('Patched - !pid', array('!pid' => $pid)), 'ok');
+      return TRUE;
     }
   }
 }

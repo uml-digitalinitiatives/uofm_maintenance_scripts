@@ -1,0 +1,103 @@
+<?php
+/**
+ * @file
+ * UofM Batch Purge functions.
+ */
+
+/**
+ * Create a custom queue item.
+ *
+ * @var string $pid
+ *   The object ID to purge.
+ *
+ * @return array
+ *   The array of pid and remove_orphan choice.
+ */
+function uofm_batch_purge_custom_queue($pid) {
+  $remove_orphans = (bool)drush_get_option('remove_orphans', FALSE);
+  return array('pid' => $pid, 'remove_orphans' => $remove_orphans);
+}
+
+/**
+ * Worker that does the purging.
+ *
+ * @var array $data
+ *   The output from the custom queue function.
+ *
+ * @return bool
+ *   True on success, False on failure.
+ */
+function uofm_batch_purge_worker($data) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  if (!islandora_is_valid_pid($data['pid'])) {
+    watchdog('uofm_batch_purge', '(@pid) is not a valid PID', array('@pid' => $data['pid']), WATCHDOG_WARNING);
+    return FALSE;
+  }
+  else {
+    $object = islandora_object_load($data['pid']);
+    if (islandora_user_access($object, array(ISLANDORA_PURGE))) {
+      if ((bool)$data['remove_orphans']) {
+        module_load_include('inc', 'islandora', 'includes/utilities');
+        $offset = 0;
+        while (($results = uofm_batch_purge_get_children($object, $offset)) !== FALSE) {
+          foreach ($results as $result) {
+            $pid = $result['object']['value'];
+            $child_object = islandora_object_load($pid);
+            if ($child_object && islandora_user_access($child_object, array(ISLANDORA_PURGE))) {
+              $parents = islandora_get_parents_from_rels_ext($child_object);
+              if (count($parents) == 1 && $parents[0] == $object->id) {
+                // Purge possible orphan
+                drush_log(t('Purging orphan !pid', array('!pid' => $pid)), 'ok');
+                islandora_delete_object($child_object);
+              }
+            }
+          }
+          // Try again for the next page.
+          $offset += 1;
+        }
+      }
+      drush_log(t('Purging object !pid', array('!pid' => $object->id)), 'ok');
+      islandora_delete_object($object);
+      return TRUE;
+    }
+    else {
+      drush_log(t('Insufficient privileges to purge object !pid', array('!pid' => $object->id)), 'warning');
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Get the children of an object to be purged.
+ *
+ * @var AbstractFedoraObject $object
+ *   The object to be purged.
+ * @var int $offset
+ *   The page of results to return.
+ *
+ * @return array
+ *   Array of objects that are children of $object.
+ *   False if no children found.
+ */
+function uofm_batch_purge_get_children(AbstractFedoraObject $object, $offset = 0) {
+  $actual_offset = 5000 * $offset;
+  $sparql =<<<EOF
+  PREFIX fedora-rels-ext: <info:fedora/fedora-system:def/relations-external#>
+  select ?object where {
+    {
+      ?object fedora-rels-ext:isMemberOf <info:fedora/{$object->id}> .
+    } UNION {
+      ?object fedora-rels-ext:isMemberOfCollection <info:fedora/{$object->id}> .
+    }
+  }
+  OFFSET {$actual_offset}
+EOF;
+
+  $results = $object->repository->ri->query($sparql, 'sparql', 5000);
+  if (count($results) == 0) {
+    return FALSE;
+  }
+  else {
+    return $results;
+  }
+}
