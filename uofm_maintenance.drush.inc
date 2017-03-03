@@ -279,18 +279,20 @@ function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE) {
  *   length of time to claim each item for
  */
 function drush_uofm_maintenance_run($worker_fn, $queue_name, $timer, $lease = 100) {
+  drupal_static_reset('islandora_get_tuque_connection');
   $timeout = drush_get_option('timeout', ini_get('max_execution_time'));
   $queue = DrupalQueue::get($queue_name);
   timer_start($timer);
   while (($timeout == 0 || (timer_read($timer) / 1000) < $timeout) && ($item = $queue->claimItem($lease)) !== FALSE) {
     if (is_object($item) && isset($item->data)) {
       $res = $worker_fn($item->data);
+      ///drush_log("Hello ({$res}), "notice");
       if ($res === TRUE) {
         $queue->deleteItem($item);
         drush_log("Processed object ({$item->data})", "notice");
       }
       else {
-        $queue->releaseItem($item);
+        //$queue->releaseItem($item);
       }
     }
   }
