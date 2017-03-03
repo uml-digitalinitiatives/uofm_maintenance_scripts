@@ -110,6 +110,51 @@ function uofm_maintenance_drush_command() {
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
+   $items['uofm_maintenance_regen_fits_pp'] = array(
+    'options' => array(
+      'query' => array(
+        'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
+      ),
+      'pid' => array(
+        'description' => 'A PID to operate on',
+      ),
+      'pidlist' => array(
+        'description' => 'A comma seperated list of PIDs to operate on',
+      ),
+      'pidfile' => array(
+        'description' => 'Path to a textfile of PIDs to operate on, one per line',
+      ),
+    ),
+    'aliases' => array('uofm_regen_fits_pp'),
+    'callback' => 'drush_uofm_maintenance_preprocess',
+    'callback arguments' => array(UOFM_MAINTENANCE_REGEN_FITS_QUEUE, FALSE),
+    'description' => 'Add a list of objects to a queue to have the TECHMD or TECHMD_FITS regenerated',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
+  $items['uofm_maintenance_regen_fits_run'] = array(
+    'options' => array(
+      'timeout' => array(
+        'description' => 'Length of time to run, or until queue is empty if omitted',
+      ),
+    ),
+    'aliases' => array('uofm_regen_fits_run'),
+    'callback' => 'drush_uofm_maintenance_run',
+    'callback arguments' => array(
+      'uofm_maintenance_regen_fits_worker',
+      UOFM_MAINTENANCE_REGEN_FITS_QUEUE,
+      UOFM_MAINTENANCE_REGEN_FITS_TIMER,
+    ),
+    'description' => 'Process the queue of objects generated with uofm_regen_fits_pp, regenerate TECHMD or TECHMD_FITS for all objects',
+    'drupal dependencies' => array(
+      'islandora',
+    ),
+    'category' => 'uofm_maintenance_scripts',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
   $items['uofm_maintenance_batch_index_jms'] = array(
         'options' => array(
       'query' => array(

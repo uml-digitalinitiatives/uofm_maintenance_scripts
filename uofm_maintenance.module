@@ -17,6 +17,12 @@ define('UOFM_MAINTENANCE_REGEN_JP2_QUEUE', 'uofm_maintenance_regenerate_jp2');
 define('UOFM_MAINTENANCE_REGEN_JP2_TIMER', UOFM_MAINTENANCE_REGEN_JP2_QUEUE);
 
 /**
+ * Regenerate FITS datastream queue and timer
+ */
+define('UOFM_MAINTENANCE_REGEN_FITS_QUEUE', 'uofm_maintenance_regenerate_fits');
+define('UOFM_MAINTENANCE_REGEN_FITS_TIMER', UOFM_MAINTENANCE_REGEN_FITS_QUEUE);
+
+/**
  * Batch index queue
  */
 define('UOFM_MAINTENANCE_BATCH_INDEX_QUEUE', 'uofm_maintenance_batch_reindex');
@@ -87,6 +93,31 @@ function uofm_maintenance_regen_jp2_worker($object) {
       drush_log("Regenerate JP2 for " . $obj->id, "ok");
       islandora_large_image_create_jp2_derivative($obj);
     }
+  }
+  return TRUE;
+}
+
+/**
+ * Regenerate FITS derivative from OBJ.
+ *
+ * @param string|AbstractObject $object
+ *   the string PID or a Fedora Object
+ */
+function uofm_maintenance_regen_fits_worker($object) {
+  $obj = FALSE;
+  if (is_string($object)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($object)) {
+      $obj = islandora_object_load($object);
+    }
+  }
+  if (is_a($object, 'AbstractObject')) {
+    $obj = $object;
+  }
+  if (isset($obj['OBJ'])) {
+    module_load_include('inc', 'islandora_fits', 'includes/derivatives');
+    drush_log("Regenerate FITS for " . $obj->id, "ok");
+    islandora_fits_create_techmd($obj, TRUE, array('source_dsid' => 'OBJ'));
   }
   return TRUE;
 }
@@ -441,7 +472,7 @@ function uofm_maintenance_fix_MODS($pid) {
             array('type' => 'replace', 'old' => '/oai_dc:dc/dc:date', 'new' => '<dc:date>' . $new_date . '</dc:date>'),
           ),
         );
-        
+
         try {
           $new_dc = \Drupal\manidora\XMLPatcher::patch($dc_content, $patch);
           $object['DC']->content = $new_dc;
