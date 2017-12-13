@@ -1,0 +1,155 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: whikloj
+ * Date: 2017-12-12
+ * Time: 10:36 AM
+ */
+
+class CopyCCTester extends IslandoraWebTestCase {
+
+  /**
+   * Array of tests to run.
+   *
+   * @var array
+   */
+  private $textMatrix = array(
+    array('from' => 'test:source_no_license', 'to' => 'test:dest_no_license', 'result' => 'dest_no_license.xml'),
+    array('from' => 'test:source_text_license', 'to' => 'test:dest_no_license', 'result' => 'result_no_2_text.xml'),
+    array('from' => 'test:source_cc_license', 'to' => 'test:dest_no_license', 'result' => 'result_no_2_cc.xml'),
+    array('from' => 'test:source_cc_and_text_license', 'to' => 'test:dest_no_license', 'result' => 'result_no_2_both.xml'),
+    array('from' => 'test:source_no_license', 'to' => 'test:dest_text_license', 'result' => 'dest_text_license.xml'),
+    array('from' => 'test:source_text_license', 'to' => 'test:dest_text_license', 'result' => 'result_text_2_text.xml'),
+    array('from' => 'test:source_cc_license', 'to' => 'test:dest_text_license', 'result' => 'result_text_2_cc.xml'),
+    array('from' => 'test:source_cc_and_text_license', 'to' => 'test:dest_text_license', 'result' => 'result_text_2_both.xml'),
+    array('from' => 'test:source_no_license', 'to' => 'test:dest_cc_license', 'result' => 'dest_cc_license.xml'),
+    array('from' => 'test:source_text_license', 'to' => 'test:dest_cc_license', 'result' => 'result_cc_2_text.xml'),
+    array('from' => 'test:source_cc_license', 'to' => 'test:dest_cc_license', 'result' => 'result_cc_2_cc.xml'),
+    array('from' => 'test:source_cc_and_text_license', 'to' => 'test:dest_cc_license', 'result' => 'result_cc_2_both.xml'),
+    array('from' => 'test:source_no_license', 'to' => 'test:dest_cc_and_text_license', 'result' => 'dest_cc_and_text_license.xml'),
+    array('from' => 'test:source_text_license', 'to' => 'test:dest_cc_and_text_license', 'result' => 'result_both_2_text.xml'),
+    array('from' => 'test:source_cc_license', 'to' => 'test:dest_cc_and_text_license', 'result' => 'result_both_2_cc.xml'),
+    array('from' => 'test:source_cc_and_text_license', 'to' => 'test:dest_cc_and_text_license', 'result' => 'result_both_2_both.xml'),
+  );
+
+  private $testSources = array(
+    'source_no_license.xml',
+    'source_text_license.xml',
+    'source_cc_license.xml',
+    'source_cc_and_text_license.xml',
+    'dest_no_license.xml',
+    'dest_text_license.xml',
+    'dest_cc_license.xml',
+    'dest_cc_and_text_license.xml',
+  );
+
+  /**
+   * Array of objects created in the test, that should be removed.
+   *
+   * @var array
+   */
+  protected $testObjects = array(
+    'test:source_no_license',
+    'test:source_text_license',
+    'test:source_cc_license',
+    'test:source_cc_and_text_license',
+    'test:dest_no_license',
+    'test:dest_text_license',
+    'test:dest_cc_license',
+    'test:dest_cc_and_text_license',
+  );
+
+  /**
+   * Path to resources.
+   *
+   * @var string
+   */
+  private $resourcePath = "";
+
+  /**
+   * {@inheritdoc}
+   *
+   * @see \IslandoraWebTestCase::setUp()
+   */
+  public function setUp() {
+    $args = func_get_args();
+    $args = (isset($args[0]) && is_array($args[0])) ? $args[0] : $args;
+    $args[] = 'uofm_copy_cc_license';
+    $args[] = 'uofm_maintenance';
+    parent::setUp($args);
+    $this->resourcePath = realpath(dirname(__FILE__) . "/resources");
+    $this->purgeTestObjects();
+  }
+
+  /**
+   * Free any objects/resources created for this test.
+   *
+   * @see IslandoraUnitTestCase::tearDown()
+   */
+  public function tearDown() {
+    $this->purgeTestObjects();
+    parent::tearDown();
+  }
+
+  /**
+   * Purge any objects created by the test's in this class.
+   */
+  protected function purgeTestObjects() {
+    foreach ($this->testObjects as $object) {
+      try {
+        $object = $this->admin->repository->getObject($object);
+        $object->label = "Don't Block";
+        $this->admin->repository->purgeObject($object->id);
+      }
+      catch (Exception $e) {
+        // Meh... Either it didn't exist or the purge failed.
+      }
+    }
+  }
+
+  /**
+   * Gets info to display to describe this test.
+   *
+   * @see IslandoraUnitTestCase::getInfo()
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'UofM Copy License ',
+      'description' => 'Ensure that copy license works.',
+      'group' => 'UofM Maintenance',
+    );
+  }
+
+  public function testRunMatrix() {
+    $this->loadTestObjects();
+    foreach ($this->textMatrix as $test) {
+      $from_pid = $test['from'];
+      $dest_pid = $test['to'];
+      $result_file = "{$this->resourcePath}/{$test['result']}";
+      $source = islandora_object_load($from_pid);
+      $dest = islandora_object_load($dest_pid);
+      $source_xml = $source['MODS']->content;
+      $dest_xml = $dest['MODS']->content;
+      $result_xml = file_get_contents($result_file);
+      $result = uofm_copy_license_do_copy($source_xml, $dest_xml);
+      $this->verbose("<pre>{$result['xml']}</pre>");
+      $this->assertEqual($result_xml, $result['xml'], "Copying license from {$from_pid} to {$dest_pid}");
+
+    }
+  }
+
+  private function loadTestObjects() {
+    foreach ($this->testSources as $source) {
+      $pid_part = preg_replace('/\.[^\.]+$/', '', $source);
+      $pid = "test:{$pid_part}";
+      $object = $this->admin->repository->constructObject($pid);
+      $this->admin->repository->ingestObject($object);
+      $mods = $object->constructDatastream('MODS');
+      $object->ingestDatastream($mods);
+
+      $object['MODS']->content = file_get_contents("{$this->resourcePath}/{$source}");
+      $object['MODS']->mimetype = 'application/xml';
+    }
+  }
+
+}

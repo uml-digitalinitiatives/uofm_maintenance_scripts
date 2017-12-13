@@ -1,0 +1,56 @@
+<?php
+
+function uofm_copy_license_custom_queue($pid) {
+  $source_pid = drush_get_option('source_pid', NULL);
+  if (!is_null($source_pid)) {
+    return array('source_pid' => $source_pid, 'destination_pid' => $pid);
+  }
+}
+
+function uofm_copy_license_worker($data) {
+  $source = islandora_object_load($data['source_pid']);
+  $destination = islandora_object_load($data['destination_pid']);
+  if ($source && $destination) {
+    if (isset($source['MODS']) && isset($destination['MODS'])) {
+      $source_mods = $source['MODS']->content;
+      $dest_mods = $destination['MODS']->content;
+      $result = uofm_copy_license_do_copy($source_mods, $dest_mods);
+      if ($result['changed']) {
+        $destination['MODS']->content = $result['xml'];
+      }
+    }
+  }
+}
+
+function uofm_copy_license_do_copy($source_mods, $dest_mods) {
+  $doc = new DOMDocument();
+  $doc->loadXML($source_mods);
+  $xpath = new DOMXPath($doc);
+  $xpath->registerNamespace('mod', 'http://www.loc.gov/mods/v3');
+  $cc_results = $xpath->query('/mods:mods/mods:accessCondition[@type="Creative Commons License"]');
+  $text_results = $xpath->query('/mods:mods/mods:accessCondition[not(@type)]');
+  $changed = FALSE;
+  if ($cc_results->length > 0 || $text_results->length > 0) {
+    $patch = array(
+      'ns' => array('mods' => 'http://www.loc.gov/mods/v3'),
+      'changes' => array(),
+    );
+    if ($cc_results->length > 0) {
+      foreach ($cc_results as $result) {
+        $temp_license = $doc->saveXML($result);
+        $patch['changes'][] = array('type' => 'remove', 'old' => '/mods:mods/mods:accessCondition[@type="Creative Commons License"]');
+        $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => $temp_license, 'insert_ns' => TRUE);
+      }
+    }
+    if ($text_results->length > 0) {
+      foreach ($text_results as $result) {
+        $temp_license = $doc->saveXML($result);
+        $patch['changes'][] = array('type' => 'remove', 'old' => '/mods:mods/mods:accessCondition[not(@type)]');
+        $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => $temp_license, 'insert_ns' => TRUE);
+      }
+    }
+    $dest_mods = Drupal\manidora\XMLPatcher::patch($dest_mods, $patch);
+    $changed = TRUE;
+  }
+  return array('changed' => $changed, 'xml' => $dest_mods);
+}

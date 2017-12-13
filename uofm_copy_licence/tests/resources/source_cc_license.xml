@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<mods:mods xmlns:mods="http://www.loc.gov/mods/v3">
+    <mods:titleInfo>
+        <mods:title>Source Object CC</mods:title>
+    </mods:titleInfo>
+    <mods:typeOfResource>text</mods:typeOfResource>
+    <mods:originInfo>
+        <mods:dateCreated encoding="iso8601">1901-07-20</mods:dateCreated>
+    </mods:originInfo>
+    <mods:language>
+        <mods:languageTerm authority="iso639-2b" type="code">eng</mods:languageTerm>
+    </mods:language>
+    <mods:subject authority="lcsh">
+        <mods:topic lang="eng">East Europeans</mods:topic>
+        <mods:hierarchicalGeographic>
+            <mods:country>Canada</mods:country>
+            <mods:continent>North America</mods:continent>
+        </mods:hierarchicalGeographic>
+        <mods:topic lang="eng">Clergy</mods:topic>
+        <mods:name type="corporate">
+            <mods:namePart>Catholic Church</mods:namePart>
+        </mods:name>
+        <mods:hierarchicalGeographic>
+            <mods:province>Manitoba</mods:province>
+            <mods:country>Canada</mods:country>
+            <mods:continent>North America</mods:continent>
+        </mods:hierarchicalGeographic>
+        <mods:topic lang="eng">Immigrants</mods:topic>
+        <mods:topic lang="eng">Ukrainians</mods:topic>
+    </mods:subject>
+    <mods:accessCondition type="Creative Commons License">by/2.5/ca/</mods:accessCondition>
+</mods:mods>
