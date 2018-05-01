@@ -1,0 +1,56 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: whikloj
+ * Date: 2017-12-19
+ * Time: 11:56 AM
+ */
+
+/**
+ * Filter an array of PIDs to remove those in the Solr index.
+ *
+ * @param array $items
+ *   array of PIDs
+ *
+ * @return array
+ *   filtered array of PIDs
+ */
+function uofm_batch_index_filter(array $items) {
+  // The PIDs not in the Solr index.
+  $missing = array();
+
+  if (count($items) > 0) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    module_load_include('php', 'islandora_solr', 'SolrPhpClient/Apache/Solr/Service');
+
+    $path_parts = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+    $solr = new Apache_Solr_Service($path_parts['host'], $path_parts['port'], $path_parts['path'] . '/');
+    $solr->setCreateDocuments(0);
+
+    $index = 0;
+    // How many PIDs we query at a time, seems to depend on maximum header length?
+    $set_size = 100;
+    if (count($items) < $set_size) {
+      $set_size = count($items);
+    }
+    $add_pid = function($o) {
+      return "PID:" . str_replace(":", "\\:", $o);
+    };
+
+    while (($index * $set_size) < count($items)) {
+      $slice = array_slice($items, ($index * $set_size), $set_size);
+      // Make a long string of colon escaped PIDs.
+      $query_pids = implode(array_map($add_pid, $slice), " OR ");
+      // Search for all the possible PIDs.
+      $solr_query = "($query_pids)";
+      $solr_params = array('fl' => 'PID', 'rows' => $set_size);
+      $res = $solr->search($solr_query, 0, $set_size, $solr_params);
+      if ($res && $res->response->numFound < count($slice)) {
+        // At least one is missing, get the missing PIDs.
+        $missing = array_merge($missing, array_diff($slice, $res->response->docs));
+      }
+      $index += 1;
+    }
+  }
+  return $missing;
+}

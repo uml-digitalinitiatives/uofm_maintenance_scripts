@@ -1,0 +1,7 @@
+name = "UofM Batch Index"
+description = "A drush script to add items to be reindexed"
+package = Islandora Local Customization
+version = 7.x-dev
+core = 7.x
+dependencies[] = islandora
+dependencies[] = uofm_maintenance
