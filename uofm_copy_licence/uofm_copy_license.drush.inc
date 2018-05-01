@@ -33,9 +33,9 @@ function uofm_copy_license_drush_command() {
     'aliases' => array('uofm_copy_cc_pp'),
     'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(
-      'uofm_copy_cc_license_queue',
+      'uofm_copy_license_queue',
       FALSE,
-      'uofm_copy_cc_license_custom_queue',
+      'uofm_copy_license_custom_queue',
     ),
     'description' => 'Add a list of objects to a queue to have the Creative Commons license copied from the specified object.',
     'drupal dependencies' => array(
@@ -57,9 +57,9 @@ function uofm_copy_license_drush_command() {
     ),
     'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
-      'uofm_copy_cc_license_worker',
-      'uofm_copy_cc_license_queue',
-      'uofm_copy_cc_license_timer',
+      'uofm_copy_license_worker',
+      'uofm_copy_license_queue',
+      'uofm_copy_license_timer',
       300,
     ),
     'description' => 'Process the Creative Commons copy operations added by \'uofm_copy_cc_license_preprocess\'',

@@ -18,6 +18,7 @@ function uofm_copy_license_worker($data) {
       if ($result['changed']) {
         $destination['MODS']->content = $result['xml'];
       }
+      return TRUE;
     }
   }
 }
@@ -49,8 +50,11 @@ function uofm_copy_license_do_copy($source_mods, $dest_mods) {
         $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => $temp_license, 'insert_ns' => TRUE);
       }
     }
-    $dest_mods = Drupal\manidora\XMLPatcher::patch($dest_mods, $patch);
-    $changed = TRUE;
+    $new_dest_mods = Drupal\manidora\XMLPatcher::patch($dest_mods, $patch);
+    $changed = strcmp($new_dest_mods, $dest_mods);
+    if ($changed) {
+      $dest_mods = $new_dest_mods;
+    }
   }
   return array('changed' => $changed, 'xml' => $dest_mods);
 }
