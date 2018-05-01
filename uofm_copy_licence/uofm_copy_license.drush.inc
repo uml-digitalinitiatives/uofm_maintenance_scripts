@@ -8,10 +8,10 @@
  * Invokes hook_drush_command().
  * @return array
  */
-function uofm_copy_cc_license_drush_command() {
+function uofm_copy_license_drush_command() {
   $items = array();
 
-  $items['uofm_copy_cc_license_preprocess'] = array(
+  $items['uofm_copy_license_preprocess'] = array(
     'options' => array(
       'query' => array(
         'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
@@ -40,7 +40,7 @@ function uofm_copy_cc_license_drush_command() {
     'description' => 'Add a list of objects to a queue to have the Creative Commons license copied from the specified object.',
     'drupal dependencies' => array(
       'islandora',
-      'uofm_copy_cc_license',
+      'uofm_copy_license',
     ),
     'drush dependencies' => array(
       'uofm_maintenance'
@@ -49,7 +49,7 @@ function uofm_copy_cc_license_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
 
-  $items['uofm_copy_cc_license_process'] = array(
+  $items['uofm_copy_license_process'] = array(
     'options' => array(
       'timeout' => array(
         'description' => 'Length of time to run, or until queue is empty if omitted',
@@ -65,7 +65,7 @@ function uofm_copy_cc_license_drush_command() {
     'description' => 'Process the Creative Commons copy operations added by \'uofm_copy_cc_license_preprocess\'',
     'drupal dependencies' => array(
       'islandora',
-      'uofm_copy_cc_license'
+      'uofm_copy_license'
     ),
     'drush dependencies' => array(
       'uofm_maintenance'
