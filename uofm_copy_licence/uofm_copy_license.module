@@ -11,6 +11,7 @@ function uofm_copy_license_worker($data) {
   $source = islandora_object_load($data['source_pid']);
   $destination = islandora_object_load($data['destination_pid']);
   if ($source && $destination) {
+    drush_log(t('Operation on !d', array('!d' => $data['destination_pid'])), "ok");
     if (isset($source['MODS']) && isset($destination['MODS'])) {
       $source_mods = $source['MODS']->content;
       $dest_mods = $destination['MODS']->content;
