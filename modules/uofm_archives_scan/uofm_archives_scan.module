@@ -1,0 +1,62 @@
+<?php
+
+function uofm_archives_scan_process_collection(AbstractObject $collection, $output_file) {
+  module_load_include('inc', 'islandora_basic_collection', 'includes/utilities');
+  $page = 0;
+  $pagesize = 20;
+  $members = array();
+  do {
+    list($count, $member_page) = islandora_basic_collection_display_query_sparql($collection, $page, $pagesize);
+    $members = array_merge($members, $member_page);
+  } while ($count > (($page * $pagesize) + $pagesize));
+
+  $final_string = "";
+  $counter = 0;
+  foreach ($members as $member_pid) {
+    $object = islandora_object_load($member_pid);
+    if ($object) {
+      if (isset($object['MODS'])) {
+        $counter += 1;
+        $output = array();
+
+        $xml = new DOMDocument();
+        $xml->loadXML($object['MODS']->content);
+        $xpath = new DOMXPath($xml);
+        $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+        $results = $xpath->query('//mods:identifier[@type="local"]');
+        if ($results->length == 1) {
+          $output['local_id'] = $results->item(0)->textContent;
+        }
+        else {
+          drush_log("No local identifer found for !pid", array('!pid' => $member_pid), "warning");
+          break;
+        }
+        $output['pid'] = $member_pid;
+        $output['models'] = $object->models;
+        $output['relationships'] = array();
+        $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, 'isPartOf');
+        if (count($relationships) > 0) {
+          $output['relationships']['isPartOf'] = $relationships;
+        }
+        $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, 'isConstituentOf');
+        if (count($relationships) > 0) {
+          $output['relationships']['isConstituentOf'] = $relationships;
+        }
+        if (strlen($final_string) > 0) {
+          $final_string .= ",";
+        }
+        $final_string .= json_encode($output);
+
+      }
+    }
+
+  }
+  if ($final_string != "") {
+    $final_string = "{[$final_string]}";
+    $fp = fopen($output_file, 'w');
+    fwrite($fp, $final_string);
+    fclose($fp);
+  }
+  drush_log("Finished, processed !c objects", array("!c" => $counter), "ok");
+
+}

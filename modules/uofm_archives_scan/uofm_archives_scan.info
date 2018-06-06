@@ -1,0 +1,8 @@
+name = "UofM Archives Scan"
+description = "A drush script to scan the resources in a collection and output a report of structure"
+package = Islandora Local Customization
+version = 7.x-dev
+core = 7.x
+dependencies[] = islandora
+dependencies[] = uofm_maintenance
+dependencies[] = islandora_basic_collection
