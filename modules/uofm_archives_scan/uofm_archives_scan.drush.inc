@@ -32,7 +32,7 @@ function uofm_archives_scan_drush_command() {
   return $items;
 }
 
-function drush_uofm_archives_scan() {
+function drush_uofm_archives_scan_process() {
   module_load_include('inc', 'islandora', 'includes/utilities');
   $pid = drush_get_option('pid', NULL);
   $file = drush_get_option('output', NULL);
