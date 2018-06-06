@@ -59,7 +59,7 @@ function drush_uofm_archives_scan_process() {
     return;
   }
   $base_dir = dirname($file);
-  if (file_exists($base_dir)) {
+  if (file_exists($file)) {
     drush_log(format_string("File !file already exists. Exiting.",
       array('!file' => $file)),
     'error');
