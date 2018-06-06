@@ -2,6 +2,14 @@
 
 function uofm_archives_scan_process_collection(AbstractObject $collection, $output_file) {
   module_load_include('inc', 'islandora_basic_collection', 'includes/utilities');
+
+  $relationships = array(
+    'isPartOf',
+    'isConstituentOf',
+    'isMemberOf',
+    'isMemberOfCollection',
+  );
+
   $page = 0;
   $pagesize = 20;
   $members = array();
@@ -36,13 +44,12 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
         $output['pid'] = $member_pid;
         $output['models'] = $object->models;
         $output['relationships'] = array();
-        $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, 'isPartOf');
-        if (count($relationships) > 0) {
-          $output['relationships']['isPartOf'] = $relationships;
-        }
-        $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, 'isConstituentOf');
-        if (count($relationships) > 0) {
-          $output['relationships']['isConstituentOf'] = $relationships;
+
+        foreach ($relationships as $relation) {
+          $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, $relation);
+          if (count($relationships) > 0) {
+            $output['relationships'][$relation] = $relationships;
+          }
         }
         if (strlen($final_string) > 0) {
           $final_string .= ",";
