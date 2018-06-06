@@ -48,7 +48,7 @@ function drush_uofm_archives_scan_process() {
     "error");
     return;
   }
-  if (!in_array("islandora:collectioncmodel", $object->models)) {
+  if (!in_array("islandora:collectioncmodel", array_map('strtolower', $object->models))) {
     drush_log(format_string("Object !pid is not a collection",
         array('!pid' => $pid)),
     "error");
