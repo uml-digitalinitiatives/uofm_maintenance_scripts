@@ -17,6 +17,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
     if ($object) {
       if (isset($object['MODS'])) {
         $counter += 1;
+        drush_log(format_string("Processing !pid", array('!pid' => $member_pid)), "ok");
         $output = array();
 
         $xml = new DOMDocument();
@@ -26,6 +27,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
         $results = $xpath->query('//mods:identifier[@type="local"]');
         if ($results->length == 1) {
           $output['local_id'] = $results->item(0)->textContent;
+
         }
         else {
           drush_log("No local identifer found for !pid", array('!pid' => $member_pid), "warning");

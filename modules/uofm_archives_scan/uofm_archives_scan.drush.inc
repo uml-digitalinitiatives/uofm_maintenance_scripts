@@ -24,6 +24,7 @@ function uofm_archives_scan_drush_command() {
     'drupal dependencies' => array(
       'islandora',
       'islandora_basic_collection',
+      'uofm_archives_scan',
     ),
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
@@ -42,25 +43,33 @@ function drush_uofm_archives_scan() {
   }
   $object = islandora_object_load($pid);
   if (!$object) {
-    throw new Exception(format_string("Could not load object from pid !pid",
-        array('!pid' => $pid))
-    );
+    drush_log(format_string("Could not load object from pid !pid",
+        array('!pid' => $pid)),
+    "error");
+    return;
   }
   if (!in_array("islandora:collectioncmodel", $object->models)) {
-    throw new Exception(format_string("Object !pid is not a collection",
-        array('!pid' => $pid))
-    );
+    drush_log(format_string("Object !pid is not a collection",
+        array('!pid' => $pid)),
+    "error");
+    return;
   }
-  $base_dir = dirname(realpath($file));
+  if (is_dir($file)) {
+    drush_log("--output must be a filename, not just a directory name.", "error");
+    return;
+  }
+  $base_dir = dirname($file);
   if (file_exists($base_dir)) {
-    throw new Exception(format_string("File !file already exists. Exiting.",
-      array('!file' => $file))
-    );
+    drush_log(format_string("File !file already exists. Exiting.",
+      array('!file' => $file)),
+    'error');
+    return;
   }
   if (!file_exists($base_dir) || !is_writable($base_dir)) {
-    throw new Exception(format_string("Unable to write to directory !dir",
-      array('!dir' => $base_dir))
-    );
+    drush_log(format_string("Unable to write to directory !dir",
+      array('!dir' => $base_dir)),
+    'error');
+    return;
   }
   uofm_archives_scan_process_collection($object, $file);
 }
