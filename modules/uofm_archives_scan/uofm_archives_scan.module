@@ -3,7 +3,7 @@
 function uofm_archives_scan_process_collection(AbstractObject $collection, $output_file) {
   module_load_include('inc', 'islandora_basic_collection', 'includes/utilities');
 
-  $relationships = array(
+  $relationship_names = array(
     'isPartOf',
     'isConstituentOf',
     'isMemberOf',
@@ -46,7 +46,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
         $output['models'] = $object->models;
         $output['relationships'] = array();
 
-        foreach ($relationships as $relation) {
+        foreach ($relationship_names as $relation) {
           $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, $relation);
           if (count($relationships) > 0) {
             $relation_pids = array_map(function($o){ return $o['object']['value'];}, $relationships);
