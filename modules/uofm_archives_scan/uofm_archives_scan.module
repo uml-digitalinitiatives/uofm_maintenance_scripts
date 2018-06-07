@@ -63,7 +63,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
 
   }
   if ($final_string != "") {
-    $final_string = "{[$final_string]}";
+    $final_string = "[$final_string]";
     $fp = fopen($output_file, 'w');
     fwrite($fp, $final_string);
     fclose($fp);
