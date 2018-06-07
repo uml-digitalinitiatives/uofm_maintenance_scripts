@@ -16,6 +16,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
   do {
     list($count, $member_page) = islandora_basic_collection_display_query_sparql($collection, $page, $pagesize);
     $members = array_merge($members, $member_page);
+    $page += 1;
   } while ($count > (($page * $pagesize) + $pagesize));
 
   $final_string = "";
