@@ -48,7 +48,8 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
         foreach ($relationships as $relation) {
           $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, $relation);
           if (count($relationships) > 0) {
-            $output['relationships'][$relation] = $relationships;
+            $relation_pids = array_map(function($o){ return $o['object']['value'];}, $relationships);
+            $output['relationships'][$relation] = $relation_pids;
           }
         }
         if (strlen($final_string) > 0) {
