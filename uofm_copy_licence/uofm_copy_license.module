@@ -13,11 +13,16 @@ function uofm_copy_license_worker($data) {
   if ($source && $destination) {
     drush_log(t('Operation on !d', array('!d' => $data['destination_pid'])), "ok");
     if (isset($source['MODS']) && isset($destination['MODS'])) {
-      $source_mods = $source['MODS']->content;
-      $dest_mods = $destination['MODS']->content;
-      $result = uofm_copy_license_do_copy($source_mods, $dest_mods);
-      if ($result['changed']) {
-        $destination['MODS']->content = $result['xml'];
+      try {
+        $source_mods = $source['MODS']->content;
+        $dest_mods = $destination['MODS']->content;
+        $result = uofm_copy_license_do_copy($source_mods, $dest_mods);
+        if ($result['changed']) {
+          $destination['MODS']->content = $result['xml'];
+        }
+      }
+      catch (Drupal\manidora\XMLPatcherException $e) {
+        drush_log(t("Invalid or blank XML in object !pid", array('!pid' => $destination->id)), "error");
       }
       return TRUE;
     }
