@@ -26,7 +26,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
     if ($object) {
       if (isset($object['MODS'])) {
         $counter += 1;
-        drush_log(format_string("Processing !pid", array('!pid' => $member_pid)), "ok");
+        drush_log(t("Processing !pid", array('!pid' => $member_pid)), "ok");
         $output = array();
 
         $xml = new DOMDocument();
@@ -39,7 +39,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
 
         }
         else {
-          drush_log("No local identifer found for !pid", array('!pid' => $member_pid), "warning");
+          drush_log(t("No local identifer found for !pid", array('!pid' => $member_pid)), "warning");
           break;
         }
         $output['pid'] = $member_pid;
@@ -68,6 +68,6 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
     fwrite($fp, $final_string);
     fclose($fp);
   }
-  drush_log("Finished, processed !c objects", array("!c" => $counter), "ok");
+  drush_log(t("Finished, processed !c objects", array("!c" => $counter)), "ok");
 
 }
