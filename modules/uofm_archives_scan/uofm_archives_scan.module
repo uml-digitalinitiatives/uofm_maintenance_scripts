@@ -3,12 +3,7 @@
 function uofm_archives_scan_process_collection(AbstractObject $collection, $output_file) {
   module_load_include('inc', 'islandora_basic_collection', 'includes/utilities');
 
-  $relationship_names = array(
-    'isPartOf',
-    'isConstituentOf',
-    'isMemberOf',
-    'isMemberOfCollection',
-  );
+
 
   $page = 0;
   $pagesize = 20;
@@ -19,7 +14,7 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
     $page += 1;
   } while ($count > (($page * $pagesize) + $pagesize));
 
-  $final_string = "";
+  $final_string = array();
   $counter = 0;
   foreach ($members as $member_pid) {
     $object = islandora_object_load($member_pid);
@@ -27,47 +22,73 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
       if (isset($object['MODS'])) {
         $counter += 1;
         drush_log(t("Processing !pid", array('!pid' => $member_pid)), "ok");
-        $output = array();
+        $output = uofm_archives_scan_base_data($object);
 
-        $xml = new DOMDocument();
-        $xml->loadXML($object['MODS']->content);
-        $xpath = new DOMXPath($xml);
-        $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
-        $results = $xpath->query('//mods:identifier[@type="local"]');
-        if ($results->length == 1) {
-          $output['local_id'] = $results->item(0)->textContent;
-
+        if (!isset($final_string[$member_pid])) {
+          $final_string[$member_pid] = json_encode($output);
         }
-        else {
-          drush_log(t("No local identifer found for !pid", array('!pid' => $member_pid)), "warning");
-          break;
-        }
-        $output['pid'] = $member_pid;
-        $output['models'] = $object->models;
-        $output['relationships'] = array();
 
-        foreach ($relationship_names as $relation) {
-          $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, $relation);
-          if (count($relationships) > 0) {
-            $relation_pids = array_map(function($o){ return $o['object']['value'];}, $relationships);
-            $output['relationships'][$relation] = $relation_pids;
+        if (in_array("islandora:compoundcmodel", array_map('strtolower', $object->models))) {
+          $compound_parts = islandora_compound_object_retrieve_compound_info($object, True);
+          if (isset($compound_parts['siblings'])) {
+            foreach ($compound_parts['siblings'] as $compound_part) {
+              if (!isset($final_string[$compound_part])) {
+                $part_object = islandora_object_load($compound_part);
+                if ($part_object) {
+                  if (isset($part_object['MODS'])) {
+                    drush_log(t("Processing !pid", array('!pid' => $compound_part)), "ok");
+                    $counter += 1;
+                    $final_string[$compound_part] = json_encode(uofm_archives_scan_base_data($part_object));
+                  }
+                }
+              }
+            }
           }
         }
-        if (strlen($final_string) > 0) {
-          $final_string .= ",";
-        }
-        $final_string .= json_encode($output);
-
       }
     }
 
   }
   if ($final_string != "") {
-    $final_string = "[$final_string]";
+    $final_string = "[" . implode(",", $final_string) . "]";
     $fp = fopen($output_file, 'w');
     fwrite($fp, $final_string);
     fclose($fp);
   }
   drush_log(t("Finished, processed !c objects", array("!c" => $counter)), "ok");
 
+}
+
+function uofm_archives_scan_base_data(AbstractObject $object) {
+  $relationship_names = array(
+    'isPartOf',
+    'isConstituentOf',
+    'isMemberOf',
+    'isMemberOfCollection',
+  );
+  $output = array();
+  $xml = new DOMDocument();
+  $xml->loadXML($object['MODS']->content);
+  $xpath = new DOMXPath($xml);
+  $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+  $results = $xpath->query('//mods:identifier[@type="local"]');
+  if ($results->length == 1) {
+    $output['local_id'] = $results->item(0)->textContent;
+  }
+  else {
+    drush_log(t("No local identifer found for !pid", array('!pid' => $object->id)), "warning");
+    return;
+  }
+  $output['pid'] = $object->id;
+  $output['models'] = $object->models;
+  $output['relationships'] = array();
+
+  foreach ($relationship_names as $relation) {
+    $relationships = $object->relationships->get(FEDORA_RELS_EXT_URI, $relation);
+    if (count($relationships) > 0) {
+      $relation_pids = array_map(function($o){ return $o['object']['value'];}, $relationships);
+      $output['relationships'][$relation] = $relation_pids;
+    }
+  }
+  return $output;
 }
