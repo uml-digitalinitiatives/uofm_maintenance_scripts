@@ -5,3 +5,4 @@ version = 7.x-dev
 core = 7.x
 dependencies[] = uofm_maintenance
 dependencies[] = manidora
+dependencies[] = xautoload (>= 7.x-5.0)

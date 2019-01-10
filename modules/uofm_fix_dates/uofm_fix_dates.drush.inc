@@ -60,4 +60,19 @@ function uofm_fix_dates_drush_command() {
     'category' => 'uofm_maintenance_scripts',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
+  return $items;
+}
+
+function uofm_fix_dates_preprocess($queue_name, $filter = FALSE, $custom_builder = NULL) {
+  $from = drush_get_option('old_year', NULL);
+  $to = drush_get_option('new_year', NULL);
+  if (is_null($from) || is_null($to)) {
+    drush_log(t('old_year and new_year are required arguments'), 'warning');
+    return FALSE;
+  }
+  if (!(preg_match('/^\d{4}$/', $from) && preg_match('/^\d{4}$/', $to))) {
+    drush_log(t('old_year and new_year arguments must be four (4) digit years'), 'warning');
+    return FALSE;
+  }
+  drush_uofm_maintenance_preprocess($queue_name, $filter, $custom_builder);
 }

@@ -13,14 +13,11 @@
 function uofm_fix_dates_custom($pid) {
   $from = drush_get_option('old_year', NULL);
   $to = drush_get_option('new_year', NULL);
-  if (!(is_null($from) || is_null($to))) {
-    return array(
-      'from' => trim($from),
-      'to' => trim($to),
-      'pid' => $pid,
-    );
-  }
-  return NULL;
+  return array(
+    'from' => trim($from),
+    'to' => trim($to),
+    'pid' => $pid,
+  );
 }
 
 /**
