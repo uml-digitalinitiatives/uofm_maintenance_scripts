@@ -10,7 +10,7 @@
  *
  * Base URL for reindexing.
  */
-define('UOFM_BATCH_INDEX_REINDEX_URL', 'http://localhost:8080/fedora3-solr-indexer/reindex/');
+define('UOFM_BATCH_INDEX_REINDEX_URL', 'http://localhost:9111/fedora3-solr-indexer/reindex/');
 
 /**
  * Implements hook_drush_command().
@@ -61,6 +61,7 @@ function uofm_batch_index_drush_command() {
  */
 function drush_uofm_batch_index_process($filter = TRUE) {
   module_load_include('inc', 'islandora', 'includes/utilities');
+  module_load_include('inc', 'uofm_maintenance', 'includes/utilities');
 
   $choices = (strlen(drush_get_option('query', '')) > 0 ? 1 : 0 +
   strlen(drush_get_option('pid', '')) > 0 ? 1 : 0 +
@@ -115,10 +116,11 @@ function drush_uofm_batch_index_process($filter = TRUE) {
     $results = uofm_batch_index_filter($results);
   }
   if (count($results) > 0) {
+    error_log(var_export($results, TRUE));
     $user = variable_get('islandora_collection_search_gsearch_user', NULL);
     $passwd = variable_get('islandora_collection_search_gsearch_password', NULL);
     $count = 0;
-    if (!(is_null($user) || is_null($passwd))) {
+    #if (!(is_null($user) || is_null($passwd))) {
       foreach ($results as $obj) {
         if (strlen(trim($obj)) > 0 && islandora_is_valid_pid($obj)) {
           $url = UOFM_BATCH_INDEX_REINDEX_URL . $obj;
@@ -139,6 +141,6 @@ function drush_uofm_batch_index_process($filter = TRUE) {
         }
       }
       drush_log("Added $count items to the JMS queue", 'ok');
-    }
+    #}
   }
 }

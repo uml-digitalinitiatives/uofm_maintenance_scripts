@@ -20,12 +20,11 @@ function uofm_archives_scan_process_collection(AbstractObject $collection, $outp
     $object = islandora_object_load($member_pid);
     if ($object) {
       if (isset($object['MODS'])) {
-        $counter += 1;
-        drush_log(t("Processing !pid", array('!pid' => $member_pid)), "ok");
-        $output = uofm_archives_scan_base_data($object);
 
         if (!isset($final_string[$member_pid])) {
-          $final_string[$member_pid] = json_encode($output);
+          $counter += 1;
+          drush_log(t("Processing !pid", array('!pid' => $member_pid)), "ok");
+          $final_string[$member_pid] = json_encode(uofm_archives_scan_base_data($object));
         }
 
         if (in_array("islandora:compoundcmodel", array_map('strtolower', $object->models))) {

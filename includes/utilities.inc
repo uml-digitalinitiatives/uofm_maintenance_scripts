@@ -76,7 +76,12 @@ function uofm_maintenance_sparql_query($where) {
   drupal_static_reset('islandora_get_tuque_connection');
   $connection = islandora_get_tuque_connection();
 
-  $query = 'select DISTINCT ?object from <#ri> where { ';
+  $query =<<<EOF
+prefix fedora-rels-ext: <info:fedora/fedora-system:def/relations-external#>
+prefix fedora-model: <info:fedora/fedora-system:def/model#>
+prefix fedora-view: <info:fedora/fedora-system:def/view#>
+select DISTINCT ?object where {
+EOF;
   $query .= urldecode($where);
   $query .= ' }';
 
@@ -126,7 +131,15 @@ function uofm_maintenance_query_get_children($parent) {
   module_load_include('inc', 'islandora', 'includes/utilities');
   $results = array();
   if (islandora_is_valid_pid($parent)) {
-    $query = "{ ?object <fedora-rels-ext:isMemberOf> <info:fedora/$parent> } UNION { ?object <fedora-rels-ext:isMemberOfCollection> <info:fedora/$parent> } UNION { ?object <fedora-rels-ext:isConstituentOf> <info:fedora/$parent> }";
+    $query =<<<EOF
+{
+?object fedora-rels-ext:isMemberOf <info:fedora/$parent> .
+} UNION {
+?object fedora-rels-ext:isMemberOfCollection <info:fedora/$parent> .
+} UNION {
+?object fedora-rels-ext:isConstituentOf <info:fedora/$parent> .
+}
+EOF;
     $results = uofm_maintenance_sparql_query($query);
   }
   return $results;

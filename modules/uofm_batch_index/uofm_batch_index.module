@@ -46,11 +46,17 @@ function uofm_batch_index_filter(array $items) {
       $solr_params = array('fl' => 'PID', 'rows' => $set_size);
       $res = $solr->search($solr_query, 0, $set_size, $solr_params);
       if ($res && $res->response->numFound < count($slice)) {
+        $docs = json_encode(json_decode($res->reponse->docs), TRUE);
+        if (!is_array($docs)) {
+          // Docs is empty, found no documents.
+          $docs = array();
+        }
         // At least one is missing, get the missing PIDs.
-        $missing = array_merge($missing, array_diff($slice, $res->response->docs));
+        $missing = array_merge($missing, array_diff($slice, $docs));
       }
       $index += 1;
     }
   }
+  error_log(var_export($missing, TRUE));
   return $missing;
 }

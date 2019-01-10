@@ -1,0 +1,178 @@
+<?php
+
+
+/**
+ * Custom queue creator.
+ *
+ * @param $pid
+ *   The pid of the object.
+ *
+ * @return array|null
+ *   Array with from and to years and pid.
+ */
+function uofm_fix_dates_custom($pid) {
+  $from = drush_get_option('old_year', NULL);
+  $to = drush_get_option('new_year', NULL);
+  if (!(is_null($from) || is_null($to))) {
+    return array(
+      'from' => trim($from),
+      'to' => trim($to),
+      'pid' => $pid,
+    );
+  }
+  return NULL;
+}
+
+/**
+ * Date mover to change multiple possible locations for a year.
+ *
+ * @param array $data
+ *   The queue object
+ *
+ * @return bool
+ *  Return success status of processing.
+ */
+function uofm_fix_dates_worker(array $data) {
+  if (!(array_key_exists('from', $data) || array_key_exists('to', $data)
+    || array_key_exists('pid', $data))) {
+    drush_log(t('Missing expected queue argument'), 'warning');
+    return FALSE;
+  }
+
+  $mods_xpaths = [
+    '/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]' => '<dateIssued encoding="iso8601">%value%</dateIssued>',
+    '/mods:mods/mods:titleInfo/mods:title' => '<title>%value%</title>',
+    '/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]' => '<date encoding="iso8601">%value%</date>',
+  ];
+
+  $dc_xpaths = [
+    '/oai_dc:dc/dc:title' => '<dc:title>%value%</dc:title>',
+    '/oai_dc:dc/dc:date' => '<dc:date>%value%</dc:date>',
+  ];
+
+  $pid = $data['pid'];
+  $from = $data['pid'];
+  $to = $data['to'];
+
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $object = islandora_object_load($pid);
+      $label = $object->label;
+      $new_label = str_replace($from, $to, $label);
+      if ($new_label != $label) {
+        $object->label = $new_label;
+      }
+      if (isset($object['MODS'])) {
+        $mods_content = $object['MODS']->content;
+        $mods = new DOMDocument();
+        try {
+          $mods->loadXML($mods_content);
+        } catch (Exception $e) {
+          drush_log(t("Error loading MODS for object @p: @m", array(
+            '@p' => $pid,
+            '@m' => $e->getMessage()
+          )), 'warning');
+          return FALSE;
+        }
+        $xpath = new DOMXpath($mods);
+        $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+
+        $patch = [
+          'ns' => ['mods' => 'http://www.loc.gov/mods/v3'],
+          'changes' => [],
+        ];
+
+        $patch['changes'] = __uofm_fix_dates_make_patches($mods_xpaths, $xpath, $from, $to);
+
+        if (count($patch['changes']) > 0) {
+          try {
+            $new_mods = \Drupal\manidora\XMLPatcher::patch($mods_content, $patch);
+            $object['MODS']->content = $new_mods;
+          } catch (\Drupal\manidora\XMLPatcherException $e) {
+            drush_log(t('MODS patch for !pid failed: !e', array(
+              '!pid' => $pid,
+              '!e' => $e->getMessage()
+            )), 'error');
+            return FALSE;
+          }
+        }
+      }
+
+      if (isset($object['DC'])) {
+        $dc_content = $object['DC']->content;
+        $dc = new DOMDocument();
+        try {
+          $dc->loadXML($dc_content);
+        } catch (Exception $e) {
+          drush_log(t("Error loading DC for object @p: @m", array(
+            '@p' => $pid,
+            '@m' => $e->getMessage()
+          )), 'warning');
+          return FALSE;
+        }
+        $dc_xpath = new DOMXpath($dc);
+        $dc_xpath->registerNamespace('oai_dc', 'http://www.openarchives.org/OAI/2.0/oai_dc/');
+        $dc_xpath->registerNamespace('dc', 'http://purl.org/dc/elements/1.1/');
+
+        $patch = [
+          'ns' => [
+            'oai_dc' => 'http://www.openarchives.org/OAI/2.0/oai_dc/',
+            'dc' => 'http://purl.org/dc/elements/1.1/',
+          ],
+          'changes' => [],
+        ];
+
+        $patch['changes'] = __uofm_fix_dates_make_patches($dc_xpaths, $dc_xpath, $from, $to);
+
+        if (count($patch['changes']) > 0) {
+          try {
+            $new_dc = \Drupal\manidora\XMLPatcher::patch($dc_content, $patch);
+            $object['DC']->content = $new_dc;
+          } catch (\Drupal\manidora\XMLPatcherException $e) {
+            drush_log(t('DC patch for !pid failed: !e', array(
+              '!pid' => $pid,
+              '!e' => $e->getMessage()
+            )), 'error');
+            return FALSE;
+          }
+        }
+      }
+      drush_log(t('Patched - !pid', array('!pid' => $pid)), 'ok');
+      return TRUE;
+    }
+  }
+}
+
+/**
+ * Make a patch array for matches in the XPath object.
+ *
+ * @param array $xpaths
+ *   The XPaths to search for and elements to replace with.
+ * @param \DOMXPath $dom_xpath
+ *   The XPath object made from the \DOMDocument
+ * @param string $from
+ *   The year to search for.
+ * @param string $to
+ *   The year to replace with.
+ *
+ * @return array
+ *   An array of patches.
+ */
+function __uofm_fix_dates_make_patches(array $xpaths, DOMXPath $dom_xpath, $from, $to) {
+  $changes = [];
+  foreach ($xpaths as $path => $pattern) {
+    $results = $dom_xpath->query($path);
+    for ($x = 0; $x < $results->length; $x += 1) {
+      $old = $results->item($x)->textContent;
+      $new = str_replace($from, $to, $old);
+      if ($old !== $new) {
+        $changes[] = [
+          'type' => 'replace',
+          'old' => $path,
+          'new' => str_replace('%value', $new, $pattern),
+        ];
+      }
+    }
+  }
+}

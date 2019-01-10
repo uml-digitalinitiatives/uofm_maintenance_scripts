@@ -1,0 +1,7 @@
+name = "UofM Fix Dates"
+description = "A drush script to alter the dates in a MODS record"
+package = Islandora Local Customization
+version = 7.x-dev
+core = 7.x
+dependencies[] = uofm_maintenance
+dependencies[] = manidora
