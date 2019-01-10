@@ -1,5 +1,6 @@
 <?php
 
+define('UOFM_FIX_DATES_TOKEN', '%value%');
 
 /**
  * Custom queue creator.
@@ -11,8 +12,8 @@
  *   Array with from and to years and pid.
  */
 function uofm_fix_dates_custom($pid) {
-  $from = drush_get_option('old_year', NULL);
-  $to = drush_get_option('new_year', NULL);
+  $from = drush_get_option('old_year', '');
+  $to = drush_get_option('new_year', '');
   return array(
     'from' => trim($from),
     'to' => trim($to),
@@ -37,18 +38,21 @@ function uofm_fix_dates_worker(array $data) {
   }
 
   $mods_xpaths = [
-    '/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]' => '<dateIssued encoding="iso8601">%value%</dateIssued>',
-    '/mods:mods/mods:titleInfo/mods:title' => '<title>%value%</title>',
-    '/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]' => '<date encoding="iso8601">%value%</date>',
+    '/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]' =>
+      '<dateIssued encoding="iso8601">' . UOFM_FIX_DATES_TOKEN . '</dateIssued>',
+    '/mods:mods/mods:titleInfo/mods:title' =>
+      '<title>' . UOFM_FIX_DATES_TOKEN . '</title>',
+    '/mods:mods/mods:relatedItem[@type="host"]/mods:part/mods:date[@encoding="iso8601"]' =>
+      '<date encoding="iso8601">' . UOFM_FIX_DATES_TOKEN . '</date>',
   ];
 
   $dc_xpaths = [
-    '/oai_dc:dc/dc:title' => '<dc:title>%value%</dc:title>',
-    '/oai_dc:dc/dc:date' => '<dc:date>%value%</dc:date>',
+    '/oai_dc:dc/dc:title' => '<dc:title>' . UOFM_FIX_DATES_TOKEN . '</dc:title>',
+    '/oai_dc:dc/dc:date' => '<dc:date>' . UOFM_FIX_DATES_TOKEN . '</dc:date>',
   ];
 
   $pid = $data['pid'];
-  $from = $data['pid'];
+  $from = $data['from'];
   $to = $data['to'];
 
   if (is_string($pid)) {
@@ -161,15 +165,16 @@ function __uofm_fix_dates_make_patches(array $xpaths, DOMXPath $dom_xpath, $from
   foreach ($xpaths as $path => $pattern) {
     $results = $dom_xpath->query($path);
     for ($x = 0; $x < $results->length; $x += 1) {
-      $old = $results->item($x)->textContent;
+      $old = $results->item($x)->nodeValue;
       $new = str_replace($from, $to, $old);
       if ($old !== $new) {
         $changes[] = [
           'type' => 'replace',
           'old' => $path,
-          'new' => str_replace('%value', $new, $pattern),
+          'new' => str_replace(UOFM_FIX_DATES_TOKEN, $new, $pattern),
         ];
       }
     }
   }
+  return $changes;
 }
