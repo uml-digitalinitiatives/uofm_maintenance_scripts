@@ -252,7 +252,7 @@ function uofm_maintenance_drush_command() {
  *   the name of the queue to add these items to.
  * @param bool $filter
  *   whether to filter PIDs to remove objects already in the Solr index.
- * @param string $item_creation
+ * @param string $custom_builder
  *   function to generate the queue item, other than the default of PID.
  */
 function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE, $custom_builder = NULL) {
@@ -264,9 +264,11 @@ function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE, $custom
     strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
   if ($choices == 0) {
     drush_set_error("You must set one of the options 'pid', 'pidlist, 'pidfile' or 'query'.");
+    return;
   }
   elseif ($choices > 1) {
     drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
+    return;
   }
   $force = (bool) (!is_null(drush_get_option('force', NULL)));
   $recursive = (bool) (!is_null(drush_get_option('recursive', NULL)));

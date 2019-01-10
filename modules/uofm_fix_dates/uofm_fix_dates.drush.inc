@@ -27,7 +27,7 @@ function uofm_fix_dates_drush_command() {
     'aliases' => array(
       'uofm_fix_dates_pp',
     ),
-    'callback' => 'drush_uofm_maintenance_preprocess',
+    'callback' => 'drush_uofm_fix_dates_preprocess',
     'callback arguments' => array(
       'uofm_fix_dates_queue',
       FALSE,
@@ -63,7 +63,7 @@ function uofm_fix_dates_drush_command() {
   return $items;
 }
 
-function uofm_fix_dates_preprocess($queue_name, $filter = FALSE, $custom_builder = NULL) {
+function drush_uofm_fix_dates_preprocess($queue_name, $filter = FALSE, $custom_builder = NULL) {
   $from = drush_get_option('old_year', NULL);
   $to = drush_get_option('new_year', NULL);
   if (is_null($from) || is_null($to)) {
