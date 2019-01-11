@@ -33,10 +33,11 @@ function uofm_fix_dates_custom($pid) {
 function uofm_fix_dates_worker(array $data) {
   if (!(array_key_exists('from', $data) || array_key_exists('to', $data)
     || array_key_exists('pid', $data))) {
-    drush_log(t('Missing expected queue argument'), 'warning');
+    drush_set_error(dt('Missing expected queue argument'));
     return FALSE;
   }
 
+  # Paths to search in MODS for the text and the element to re-create.
   $mods_xpaths = [
     '/mods:mods/mods:originInfo/mods:dateIssued[@encoding="iso8601"]' =>
       '<dateIssued encoding="iso8601">' . UOFM_FIX_DATES_TOKEN . '</dateIssued>',
@@ -46,6 +47,7 @@ function uofm_fix_dates_worker(array $data) {
       '<date encoding="iso8601">' . UOFM_FIX_DATES_TOKEN . '</date>',
   ];
 
+  # Paths to search in DC for the text and the element to re-create.
   $dc_xpaths = [
     '/oai_dc:dc/dc:title' => '<dc:title>' . UOFM_FIX_DATES_TOKEN . '</dc:title>',
     '/oai_dc:dc/dc:date' => '<dc:date>' . UOFM_FIX_DATES_TOKEN . '</dc:date>',
@@ -90,6 +92,7 @@ function uofm_fix_dates_worker(array $data) {
           try {
             $new_mods = \Drupal\manidora\XMLPatcher::patch($mods_content, $patch);
             $object['MODS']->content = $new_mods;
+            drush_log(dt('Patching MODS'), 'notice');
           } catch (\Drupal\manidora\XMLPatcherException $e) {
             drush_log(t('MODS patch for !pid failed: !e', array(
               '!pid' => $pid,
@@ -97,6 +100,9 @@ function uofm_fix_dates_worker(array $data) {
             )), 'error');
             return FALSE;
           }
+        }
+        else {
+          drush_log(dt('No changes in MODS, skipping'), 'notice');
         }
       }
 
@@ -130,6 +136,7 @@ function uofm_fix_dates_worker(array $data) {
           try {
             $new_dc = \Drupal\manidora\XMLPatcher::patch($dc_content, $patch);
             $object['DC']->content = $new_dc;
+            drush_log(dt('Patching MODS'), 'notice');
           } catch (\Drupal\manidora\XMLPatcherException $e) {
             drush_log(t('DC patch for !pid failed: !e', array(
               '!pid' => $pid,
@@ -137,6 +144,9 @@ function uofm_fix_dates_worker(array $data) {
             )), 'error');
             return FALSE;
           }
+        }
+        else {
+          drush_log(dt('No changes in DC, skipping'), 'notice');
         }
       }
       drush_log(t('Patched - !pid', array('!pid' => $pid)), 'ok');
@@ -172,6 +182,7 @@ function __uofm_fix_dates_make_patches(array $xpaths, DOMXPath $dom_xpath, $from
           'type' => 'replace',
           'old' => $path,
           'new' => str_replace(UOFM_FIX_DATES_TOKEN, $new, $pattern),
+          'insert_ns' => TRUE,
         ];
       }
     }
