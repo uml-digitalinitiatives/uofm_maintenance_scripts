@@ -136,7 +136,7 @@ function uofm_fix_dates_worker(array $data) {
           try {
             $new_dc = \Drupal\manidora\XMLPatcher::patch($dc_content, $patch);
             $object['DC']->content = $new_dc;
-            drush_log(dt('Patching MODS'), 'notice');
+            drush_log(dt('Patching DC'), 'notice');
           } catch (\Drupal\manidora\XMLPatcherException $e) {
             drush_log(t('DC patch for !pid failed: !e', array(
               '!pid' => $pid,

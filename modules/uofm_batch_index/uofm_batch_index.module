@@ -1,9 +1,7 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: whikloj
- * Date: 2017-12-19
- * Time: 11:56 AM
+ * @file
+ * Batch index functions.
  */
 
 /**
@@ -57,6 +55,5 @@ function uofm_batch_index_filter(array $items) {
       $index += 1;
     }
   }
-  error_log(var_export($missing, TRUE));
   return $missing;
 }
