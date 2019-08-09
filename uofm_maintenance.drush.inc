@@ -86,6 +86,9 @@ function uofm_maintenance_drush_command() {
       'source_dsid' => array(
         'description' => 'Filter derivative hooks by this source datastream ID',
       ),
+      'destination_dsid' => array(
+        'description' => 'Filter derivative hooks by the datastream to regenerate',
+      ),
     ),
     'aliases' => array('uofm_dfp'),
     'callback' => 'drush_uofm_maintenance_preprocess',

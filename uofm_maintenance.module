@@ -108,6 +108,9 @@ function uofm_maintenance_derivative_fixer_queue($pid) {
   if (!is_null(drush_get_option('source_dsid', NULL))) {
     $item['source_dsid'] = drush_get_option('source_dsid', '');
   }
+  if (!is_null(drush_get_option('destination_dsid', NULL))) {
+    $item['destination_dsid'] = drush_get_option('destination_dsid', '');
+  }
   return $item;
 }
 
