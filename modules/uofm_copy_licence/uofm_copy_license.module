@@ -1,22 +1,42 @@
 <?php
 
+/**
+ * Generate a queue item.
+ *
+ * @param string $pid The pid of the object to process.
+ *
+ * @return array An associative array with data needed to process this object.
+ */
 function uofm_copy_license_custom_queue($pid) {
   $source_pid = drush_get_option('source_pid', NULL);
+  $replace = (!is_null(drush_get_option('replace', NULL)));
+  $return = array('replace' => $replace);
   if (!is_null($source_pid)) {
-    return array('source_pid' => $source_pid, 'destination_pid' => $pid);
+    $return = array_merge($return, array('source_pid' => $source_pid, 'destination_pid' => $pid));
   }
+  return $return;
 }
 
+/**
+ * Queue cron worker, takes data from custom queue generator and processes.
+ *
+ * @param array $data Custom queue data.
+ *
+ * @return bool True if processing was successful.
+ *
+ * @see \uofm_copy_license_custom_queue().
+ */
 function uofm_copy_license_worker($data) {
   $source = islandora_object_load($data['source_pid']);
   $destination = islandora_object_load($data['destination_pid']);
+  $replace = $data['replace'];
   if ($source && $destination) {
     drush_log(t('Operation on !d', array('!d' => $data['destination_pid'])), "ok");
     if (isset($source['MODS']) && isset($destination['MODS'])) {
       try {
         $source_mods = $source['MODS']->content;
         $dest_mods = $destination['MODS']->content;
-        $result = uofm_copy_license_do_copy($source_mods, $dest_mods);
+        $result = uofm_copy_license_do_copy($source_mods, $dest_mods, $replace);
         if ($result['changed']) {
           $destination['MODS']->content = $result['xml'];
         }
@@ -29,7 +49,15 @@ function uofm_copy_license_worker($data) {
   }
 }
 
-function uofm_copy_license_do_copy($source_mods, $dest_mods) {
+/**
+ * This does the actual copying of license from source to destination strings
+ *
+ * @param string $source_mods The MODS xml from the source object.
+ * @param string $dest_mods The MODS xml from the destination object.
+ * @param bool $replace Whether to replace ALL licenses on destination with one from source.
+ * @return array keys are 'changed' - whether we changed, 'xml' -> the result XML.
+ */
+function uofm_copy_license_do_copy($source_mods, $dest_mods, $replace = FALSE) {
   $doc = new DOMDocument();
   $doc->loadXML($source_mods);
   $xpath = new DOMXPath($doc);
@@ -37,22 +65,32 @@ function uofm_copy_license_do_copy($source_mods, $dest_mods) {
   $cc_results = $xpath->query('/mods:mods/mods:accessCondition[@type="Creative Commons License"]');
   $text_results = $xpath->query('/mods:mods/mods:accessCondition[not(@type)]');
   $changed = FALSE;
-  if ($cc_results->length > 0 || $text_results->length > 0) {
+  if ($cc_results->length > 0 || $text_results->length > 0 || $replace) {
     $patch = array(
       'ns' => array('mods' => 'http://www.loc.gov/mods/v3'),
       'changes' => array(),
     );
+    if ($cc_results->length > 0 || $replace) {
+      $patch['changes'][] = array(
+        'type' => 'remove',
+        'old' => '//mods:accessCondition[@type="Creative Commons License"]'
+      );
+    }
     if ($cc_results->length > 0) {
       foreach ($cc_results as $result) {
         $temp_license = $doc->saveXML($result);
-        $patch['changes'][] = array('type' => 'remove', 'old' => '/mods:mods/mods:accessCondition[@type="Creative Commons License"]');
         $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => $temp_license, 'insert_ns' => TRUE);
       }
+    }
+    if ($text_results->length > 0 || $replace) {
+      $patch['changes'][] = array(
+        'type' => 'remove',
+        'old' => '//mods:accessCondition[not(@type)]'
+      );
     }
     if ($text_results->length > 0) {
       foreach ($text_results as $result) {
         $temp_license = $doc->saveXML($result);
-        $patch['changes'][] = array('type' => 'remove', 'old' => '/mods:mods/mods:accessCondition[not(@type)]');
         $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => $temp_license, 'insert_ns' => TRUE);
       }
     }

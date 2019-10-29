@@ -29,6 +29,9 @@ function uofm_copy_license_drush_command() {
         'description' => 'PID to copy the creative commons from.',
         'required' => TRUE,
       ),
+      'replace' => array(
+        'description' => 'Replace all other licenses. (default is to merge different types)',
+      )
     ),
     'aliases' => array('uofm_copy_cc_pp'),
     'callback' => 'drush_uofm_maintenance_preprocess',
