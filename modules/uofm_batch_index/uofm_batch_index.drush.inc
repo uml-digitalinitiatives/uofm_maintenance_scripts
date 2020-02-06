@@ -116,7 +116,6 @@ function drush_uofm_batch_index_process($filter = TRUE) {
     $results = uofm_batch_index_filter($results);
   }
   if (count($results) > 0) {
-    error_log(var_export($results, TRUE));
     $user = variable_get('islandora_collection_search_gsearch_user', NULL);
     $passwd = variable_get('islandora_collection_search_gsearch_password', NULL);
     $count = 0;

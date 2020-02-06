@@ -14,17 +14,18 @@ function uofm_aggregate_pdfs_generate($object_id) {
       // Ensure it is a book or newspaper
       if (count(array_intersect(
         ['islandora:bookCModel', 'islandora:newspaperIssueCModel'],
-        $object['models'])) == 0
+        $object->models)) == 0
       ) {
-        drush_log("Can only operate on book and newspaper issues, skipping $object_id");
-        return true;
+        drush_log("Can only operate on book and newspaper issues, skipping $object_id", "error");
+        return false;
       }
-      $final_pdf = drupal_tempnam("temporary://", "consolidated_pdf_{$sanitized_pid}.temp.txt");
+      $final_pdf = drupal_realpath(drupal_tempnam("temporary://", "consolidated_pdf_{$sanitized_pid}.temp.pdf"));
       $pages = islandora_paged_content_get_pages($object);
       drush_log("Found " . count($pages) . " for {$object_id}");
       foreach ($pages as $page) {
-        $page_pid = $page['PID'];
+        $page_pid = $page['pid'];
         $page_number = $page['page'];
+        drush_log("Processing page {$page_number} - {$page_pid}");
         $page_object = islandora_object_load($page_pid);
         if ($page_object) {
           drush_log("Loaded {$page_pid}");
@@ -34,11 +35,12 @@ function uofm_aggregate_pdfs_generate($object_id) {
           }
           else {
             drush_log("Getting PDF from {$page_pid}");
-            $page_temp = drupal_tempnam("temporary://", "consolidated_pdf_page_{$page['page']}.temp.txt");
+            $page_temp = drupal_realpath(drupal_tempnam("temporary://", "consolidated_pdf_{$sanitized_pid}_page_{$page_number}.temp.pdf"));
             $page_object['PDF']->getContent($page_temp);
           }
           drush_log("Adding {$page_pid} to {$object_id}");
-          if (!islandora_paged_content_pdf_append($final_pdf, $page_temp)) {
+          drush_log("Adding {$page_temp}");
+          if (!islandora_paged_content_pdf_append($final_pdf, array($page_temp))) {
               drush_log("Error appending page $page_number ($page_pid) to aggregate PDF.", "error");
               file_unmanaged_delete($final_pdf);
               file_unmanaged_delete($page_temp);
@@ -48,7 +50,7 @@ function uofm_aggregate_pdfs_generate($object_id) {
           file_unmanaged_delete($page_temp);
         }
       }
-      drush_log("Updating {$object_id} with full PDF");
+      drush_log("Updating {$object_id} with full PDF ($final_pdf)");
       $ret = islandora_paged_content_update_datastream($object, $final_pdf, 'PDF');
       file_unmanaged_delete($final_pdf);
       return $ret;
