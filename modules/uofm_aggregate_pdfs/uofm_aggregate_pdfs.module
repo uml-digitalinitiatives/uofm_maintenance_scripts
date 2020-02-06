@@ -1,0 +1,64 @@
+<?php
+/**
+ * @file
+ * Aggregation functions.
+ */
+
+function uofm_aggregate_pdfs_generate($object_id) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+  if (islandora_is_valid_pid($object_id)) {
+    $object = islandora_object_load($object_id);
+    $sanitized_pid = str_replace(':', '_', $object_id);
+    if ($object) {
+      // Ensure it is a book or newspaper
+      if (count(array_intersect(
+        ['islandora:bookCModel', 'islandora:newspaperIssueCModel'],
+        $object['models'])) == 0
+      ) {
+        drush_log("Can only operate on book and newspaper issues, skipping $object_id");
+        return true;
+      }
+      $final_pdf = drupal_tempnam("temporary://", "consolidated_pdf_{$sanitized_pid}.temp.txt");
+      $pages = islandora_paged_content_get_pages($object);
+      drush_log("Found " . count($pages) . " for {$object_id}");
+      foreach ($pages as $page) {
+        $page_pid = $page['PID'];
+        $page_number = $page['page'];
+        $page_object = islandora_object_load($page_pid);
+        if ($page_object) {
+          drush_log("Loaded {$page_pid}");
+          if (!isset($page_object['PDF'])) {
+            drush_log("{$page_pid} doesn't have a PDF, generating one.");
+            $page_temp = islandora_paged_content_page_derive_pdf($page_object);
+          }
+          else {
+            drush_log("Getting PDF from {$page_pid}");
+            $page_temp = drupal_tempnam("temporary://", "consolidated_pdf_page_{$page['page']}.temp.txt");
+            $page_object['PDF']->getContent($page_temp);
+          }
+          drush_log("Adding {$page_pid} to {$object_id}");
+          if (!islandora_paged_content_pdf_append($final_pdf, $page_temp)) {
+              drush_log("Error appending page $page_number ($page_pid) to aggregate PDF.", "error");
+              file_unmanaged_delete($final_pdf);
+              file_unmanaged_delete($page_temp);
+              return false;
+          }
+          // We added a page.
+          file_unmanaged_delete($page_temp);
+        }
+      }
+      drush_log("Updating {$object_id} with full PDF");
+      $ret = islandora_paged_content_update_datastream($object, $final_pdf, 'PDF');
+      file_unmanaged_delete($final_pdf);
+      return $ret;
+    }
+    else {
+      drush_log("Object $object_id could not be loaded.", "error");
+    }
+  }
+  else {
+    drush_load("PID $object_id is not valid.", "error");
+  }
+  return false;
+}

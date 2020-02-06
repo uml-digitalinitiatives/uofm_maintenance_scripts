@@ -260,21 +260,57 @@ function uofm_maintenance_drush_command() {
  */
 function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE, $custom_builder = NULL) {
   module_load_include('inc', 'islandora', 'includes/utilities');
+  $force = (bool) (!is_null(drush_get_option('force', NULL)));
+  $recursive = (bool) (!is_null(drush_get_option('recursive', NULL)));
 
+  $results = drush_uofm_maintenance_load_options();
+  if ($results === false) {
+    // We failed, exit now.
+    return;
+  }
+
+  if ($recursive) {
+    $new_results = uofm_maintenance_recursive_query($results);
+    $results = array_unique($new_results);
+  }
+  if ($filter && !$force) {
+    $results = uofm_maintenance_batch_index_filter($results);
+  }
+  $queue = DrupalQueue::get($queue_name);
+  $count = 0;
+  foreach ($results as $obj) {
+    if (strlen(trim($obj)) > 0 && islandora_is_valid_pid($obj)) {
+      if (!is_null($custom_builder) && function_exists($custom_builder)) {
+        $return_obj = call_user_func($custom_builder, $obj);
+        $queue->createItem($return_obj);
+      }
+      else {
+        $queue->createItem($obj);
+      }
+      $count += 1;
+    }
+  }
+  drush_log("Added $count items to the queue ($queue_name)", 'ok');
+
+}
+
+/**
+ * Do the default option parsing and return an array of pids or False on error.
+ */
+function drush_uofm_maintenance_load_options() {
   $choices = (strlen(drush_get_option('query', '')) > 0 ? 1 : 0 +
-    strlen(drush_get_option('pid', '')) > 0 ? 1 : 0 +
-    strlen(drush_get_option('pidlist', '')) > 0 ? 1 : 0 +
-    strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
+  strlen(drush_get_option('pid', '')) > 0 ? 1 : 0 +
+  strlen(drush_get_option('pidlist', '')) > 0 ? 1 : 0 +
+  strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
   if ($choices == 0) {
     drush_set_error("You must set one of the options 'pid', 'pidlist, 'pidfile' or 'query'.");
-    return;
+    return false;
   }
   elseif ($choices > 1) {
     drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
-    return;
+    return false;
   }
-  $force = (bool) (!is_null(drush_get_option('force', NULL)));
-  $recursive = (bool) (!is_null(drush_get_option('recursive', NULL)));
+
   if (!is_null(drush_get_option('query', NULL))) {
     $results = uofm_maintenance_load_pids(array(
       'type' => 'query',
@@ -306,31 +342,9 @@ function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE, $custom
     elseif ($results == -9) {
       drush_set_error("File cannot be read.");
     }
+    return false;
   }
-
-  if ($recursive) {
-    $new_results = uofm_maintenance_recursive_query($results);
-    $results = array_unique($new_results);
-  }
-  if ($filter && !$force) {
-    $results = uofm_maintenance_batch_index_filter($results);
-  }
-  $queue = DrupalQueue::get($queue_name);
-  $count = 0;
-  foreach ($results as $obj) {
-    if (strlen(trim($obj)) > 0 && islandora_is_valid_pid($obj)) {
-      if (!is_null($custom_builder) && function_exists($custom_builder)) {
-        $return_obj = call_user_func($custom_builder, $obj);
-        $queue->createItem($return_obj);
-      }
-      else {
-        $queue->createItem($obj);
-      }
-      $count += 1;
-    }
-  }
-  drush_log("Added $count items to the queue ($queue_name)", 'ok');
-
+  return $results;
 }
 
 
