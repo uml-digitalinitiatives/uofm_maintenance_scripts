@@ -51,7 +51,7 @@ function uofm_aggregate_pdfs_generate($object_id) {
         }
       }
       drush_log("Updating {$object_id} with full PDF ($final_pdf)");
-      $ret = islandora_paged_content_update_datastream($object, $final_pdf, 'PDF');
+      $ret = islandora_paged_content_update_datastream($object, $final_pdf, 'PDF', null, 'application/pdf');
       file_unmanaged_delete($final_pdf);
       return $ret;
     }

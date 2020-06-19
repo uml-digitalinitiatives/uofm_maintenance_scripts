@@ -70,9 +70,16 @@ function drush_uofm_fix_dates_preprocess($queue_name, $filter = FALSE, $custom_b
     drush_log(t('old_year and new_year are required arguments'), 'warning');
     return FALSE;
   }
-  if (!(preg_match('/^\d{4}$/', $from) && preg_match('/^\d{4}$/', $to))) {
-    drush_log(t('old_year and new_year arguments must be four (4) digit years'), 'warning');
+  if (!preg_match('/^([0-9]{4})(\-[0-9]{2})?(\-[0-9]{2})?$/', trim($from), $f_match) ||
+    !preg_match('/^([0-9]{4})(\-[0-9]{2})?(\-[0-9]{2})?$/', trim($to), $t_match)) {
+    drush_log(t('old_year and new_year arguments must be dates of the format YYYY, YYYY-MM or YYYY-MM-DD'), 'warning');
     return FALSE;
   }
-  drush_uofm_maintenance_preprocess($queue_name, $filter, $custom_builder);
+  else {
+    if (count($f_match) !== count($t_match)) {
+      drush_log(t('old_year and new_year arguments must have the same format or you can create invalid dates'), 'warning');
+      return FALSE;
+    }
+    drush_uofm_maintenance_preprocess($queue_name, $filter, $custom_builder);
+  }
 }

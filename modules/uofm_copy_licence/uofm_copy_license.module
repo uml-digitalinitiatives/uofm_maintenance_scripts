@@ -1,5 +1,7 @@
 <?php
 
+const UOFM_COPY_LICENSE_MODS_NS = "http://www.loc.gov/mods/v3";
+
 /**
  * Generate a queue item.
  *
@@ -61,13 +63,13 @@ function uofm_copy_license_do_copy($source_mods, $dest_mods, $replace = FALSE) {
   $doc = new DOMDocument();
   $doc->loadXML($source_mods);
   $xpath = new DOMXPath($doc);
-  $xpath->registerNamespace('mod', 'http://www.loc.gov/mods/v3');
+  $xpath->registerNamespace('mod', UOFM_COPY_LICENSE_MODS_NS);
   $cc_results = $xpath->query('/mods:mods/mods:accessCondition[@type="Creative Commons License"]');
   $text_results = $xpath->query('/mods:mods/mods:accessCondition[not(@type)]');
   $changed = FALSE;
   if ($cc_results->length > 0 || $text_results->length > 0 || $replace) {
     $patch = array(
-      'ns' => array('mods' => 'http://www.loc.gov/mods/v3'),
+      'ns' => array('mods' => UOFM_COPY_LICENSE_MODS_NS),
       'changes' => array(),
     );
     if ($cc_results->length > 0 || $replace) {
@@ -75,10 +77,15 @@ function uofm_copy_license_do_copy($source_mods, $dest_mods, $replace = FALSE) {
         'type' => 'remove',
         'old' => '//mods:accessCondition[@type="Creative Commons License"]'
       );
+      $patch['changes'][] = array(
+        'type' => 'remove',
+        'old' => '//accessCondition[@type="Creative Commons License"]'
+      );
     }
     if ($cc_results->length > 0) {
       foreach ($cc_results as $result) {
-        $temp_license = $doc->saveXML($result);
+        $temp_license = uofm_copy_license_fix_element($doc, $result);
+        drush_log(t('temp CC license element is !l', ['!l' => $temp_license]));
         $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => $temp_license, 'insert_ns' => TRUE);
       }
     }
@@ -87,18 +94,61 @@ function uofm_copy_license_do_copy($source_mods, $dest_mods, $replace = FALSE) {
         'type' => 'remove',
         'old' => '//mods:accessCondition[not(@type)]'
       );
+      $patch['changes'][] = array(
+        'type' => 'remove',
+        'old' => '//accessCondition[not(@type)]'
+      );
     }
     if ($text_results->length > 0) {
       foreach ($text_results as $result) {
-        $temp_license = $doc->saveXML($result);
+        $temp_license = uofm_copy_license_fix_element($doc, $result);
+        drush_log(t('temp text license element is !l', ['!l' => $temp_license]));
         $patch['changes'][] = array('type' => 'add', 'parent' => '/mods:mods', 'new' => $temp_license, 'insert_ns' => TRUE);
       }
     }
     $new_dest_mods = Drupal\manidora\XMLPatcher::patch($dest_mods, $patch);
-    $changed = strcmp($new_dest_mods, $dest_mods);
+    $changed = (strcmp($new_dest_mods, $dest_mods) != 0);
     if ($changed) {
       $dest_mods = $new_dest_mods;
     }
   }
   return array('changed' => $changed, 'xml' => $dest_mods);
+}
+
+/**
+ * If the the element does not have a prefix and has the MODS as its default namespace. This recreates the element with the expected mods: prefix
+ *
+ * @param DOMDocument $doc
+ *    The DOM document we are processing.
+ * @param DOMNode $element
+ *    The element to check/alter.
+ *
+ * @return string
+ *    Return the element with a mods: prefix.
+ */
+function uofm_copy_license_fix_element($doc, $element) {
+  if ($element->isDefaultNamespace(UOFM_COPY_LICENSE_MODS_NS)) {
+    drush_log("Element has mods as default namespace");
+    $tagName = $element->localName;
+    $tagXML = $doc->saveXML($element);
+    drush_log(t("tagName is !t", ["!t" => $tagName]));
+    drush_log(t("tag is !t", ["!t" => $tagXML]));
+    if (preg_match("/(?(?<!:)$tagName)/", $tagXML)) {
+      drush_log("tag does NOT have a prefix -> $tagXML");
+      $newElement = $doc->createElementNS(UOFM_COPY_LICENSE_MODS_NS, "mods:" . $element->localName);
+      foreach ($element->attributes as $attr) {
+        $newElement->setAttribute($attr->localName, $attr->textContent);
+      }
+      foreach ($element->childNodes as $child) {
+        if ($child->nodeName=="#text") {
+          $newElement->appendChild($doc->createTextNode($child->nodeValue));
+        }
+        else {
+          $newElement->appendChild($child->cloneNode(TRUE));
+        }
+      }
+      return $doc->saveXML($newElement);
+    }
+  }
+  return $doc->saveXML($element);
 }
