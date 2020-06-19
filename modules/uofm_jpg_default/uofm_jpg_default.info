@@ -1,0 +1,6 @@
+name = "UofM JPEG default"
+description = "A drush script to replace the default label on the JPG datastream with the one from the OBJ datastream plus .jpg"
+package = Islandora Local Customization
+version = 7.x-dev
+core = 7.x
+dependencies[] = uofm_maintenance

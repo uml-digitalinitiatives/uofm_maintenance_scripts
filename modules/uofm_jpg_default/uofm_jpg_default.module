@@ -1,0 +1,37 @@
+<?php
+/**
+ * @file
+ * Cron related functions to process the fixing of JPG datastreams.
+ */
+
+const UOFM_JPG_DEFAULT_QUEUE_NAME = 'uofm_jpg_default_queue';
+
+function uofm_jpg_default_cron_queue_info() {
+  return [
+    UOFM_JPG_DEFAULT_QUEUE_NAME => [
+      'worker callback' => 'uofm_jpg_default_worker',
+      'time' => 15,
+      'skip on cron' => FALSE,
+    ],
+  ];
+}
+
+function uofm_jpg_default_worker($pid) {
+  $obj = FALSE;
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $obj = islandora_object_load($pid);
+    }
+  }
+  if ($obj instanceof AbstractObject) {
+    if (isset($obj["OBJ"]) && isset($obj["JPG"]) && $obj["JPG"]->label == "Medium sized JPEG") {
+      watchdog('uofm_jpg_default', "Running worker for !pid", ['!pid' => $pid], WATCHDOG_DEBUG);
+      $jpg_name = $obj["OBJ"]->label;
+      if (strtolower(substr($jpg_name, -4)) != ".jpg") {
+        $jpg_name .= ".jpg";
+      }
+      $obj["JPG"]->label = $jpg_name;
+    }
+  }
+}
