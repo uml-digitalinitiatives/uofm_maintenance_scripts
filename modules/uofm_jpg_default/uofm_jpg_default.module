@@ -18,6 +18,20 @@ function uofm_jpg_default_cron_queue_info() {
 
 function uofm_jpg_default_worker($pid) {
   $obj = FALSE;
+  // Force the cron to run as user 1 so we don't get locked out of objects.
+  $user = user_load(1);
+  drupal_static_reset('islandora_get_tuque_connection');
+  try {
+    if (!$tuque = islandora_get_tuque_connection($user)) {
+      $error = 'Tuque connection failed.';
+      throw new Exception($error);
+    }
+  }
+  catch (Exception $e) {
+    $exceptions[] = $e;
+    watchdog('uofm_jpg_default', 'Error connecting as admin when processing !pid', ['!pid' => $pid], WATCHDOG_DEBUG);
+    return FALSE;
+  }
   if (is_string($pid)) {
     module_load_include('inc', 'islandora', 'includes/utilities');
     if (islandora_is_valid_pid($pid)) {
@@ -27,6 +41,7 @@ function uofm_jpg_default_worker($pid) {
   if ($obj instanceof AbstractObject) {
     if (isset($obj["OBJ"]) && isset($obj["JPG"]) && $obj["JPG"]->label == "Medium sized JPEG") {
       watchdog('uofm_jpg_default', "Running worker for !pid", ['!pid' => $pid], WATCHDOG_DEBUG);
+
       $jpg_name = $obj["OBJ"]->label;
       if (strtolower(substr($jpg_name, -4)) != ".jpg") {
         $jpg_name .= ".jpg";
