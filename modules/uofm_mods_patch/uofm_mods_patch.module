@@ -1,0 +1,101 @@
+<?php
+
+const UOFM_MODS_PATCH_TOKEN = "%UOFM_MODS_PATCH_TOKEN%";
+
+/**
+ * Custom queue builder.
+ * @param string $pid the PID to process.
+ * @return array the queue data.
+ */
+function uofm_mods_patch_custom($pid) {
+  $patch_file = &drupal_static(__FUNCTION__ . "_file");
+  $patch_method = &drupal_static(__FUNCTION__ . "_method");
+  if (!isset($patch_file)) {
+    $patch_file = drush_get_option("patch_file", NULL);
+  }
+  if (!isset($patch_method)) {
+    $patch_method = drush_get_option("patch_method", NULL);
+  }
+  drush_log("patch_file {$patch_file}, patch_method {$patch_method}", "debugnotify");
+
+  return [
+    "patch_file" => $patch_file,
+    "patch_method" => $patch_method,
+    "pid" => $pid,
+  ];
+}
+
+/**
+ * Worker to perform the mods patching.
+ * @param array $data queue data.
+ * @return bool true if MODS is patched.
+ */
+function uofm_mods_patch_worker(array $data) {
+  $obj = FALSE;
+  $pid = $data['pid'];
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $obj = islandora_object_load($pid);
+    }
+  }
+  if ($obj instanceof AbstractObject) {
+    if (isset($obj["MODS"])) {
+      include_once($data['patch_file']);
+      $method = $data['patch_method'];
+      $mods_original = $obj["MODS"]->content;
+      $patched = call_user_func_array($method, [$mods_original, $obj]);
+      if (is_string($patched)) {
+        drush_log("Patched MODS is {$patched}", "debugnotify");
+        if (strcmp($mods_original, $patched) !== 0) {
+          drush_log("Patching object {$pid}", "ok");
+          $obj["MODS"]->content = $patched;
+        }
+        else {
+          drush_log("Object {$pid} not changed, skipping", "ok");
+        }
+        return TRUE;
+      }
+      else {
+        drush_log("Object {$pid}: Returned MODS was not a string.", "warning");
+        return FALSE;
+      }
+    }
+  }
+}
+
+/**
+ * Utility function to generate an array of replace patches.
+ *
+ * @param array $xpaths
+ *   An associative array with keys of xpaths to search for and values
+ *   of replacement XML. Uses the %UOFM_MODS_PATCH_TOKEN% to mark where to
+ *   insert the value.
+ * @param \DOMXPath $dom_xpath
+ *   The document XPath.
+ * @param $from
+ *   What to search for in the found elements.
+ * @param $to
+ *   What to replace with in the found elements.
+ * @return array
+ *   An array of replace changes.
+ */
+function uofm_mods_patch_make_replace_patches(array $xpaths, DOMXPath $dom_xpath, $from, $to) {
+  $changes = [];
+  foreach ($xpaths as $path => $pattern) {
+    $results = $dom_xpath->query($path);
+    for ($x = 0; $x < $results->length; $x += 1) {
+      $old = $results->item($x)->nodeValue;
+      $new = str_replace($from, $to, $old);
+      if ($old !== $new) {
+        $changes[] = [
+          'type' => 'replace',
+          'old' => $path,
+          'new' => str_replace(UOFM_MODS_PATCH_TOKEN, $new, $pattern),
+          'insert_ns' => TRUE,
+        ];
+      }
+    }
+  }
+  return $changes;
+}
