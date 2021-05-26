@@ -1,0 +1,43 @@
+<?php
+/**
+ * @file PBCore patching functions.
+ */
+
+/**
+ * Worker to perform the mods patching.
+ * @param array $data queue data.
+ * @return bool true if PBCore is patched.
+ */
+function uofm_pbcore_patch_worker(array $data) {
+  $obj = FALSE;
+  $pid = $data['pid'];
+  if (is_string($pid)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($pid)) {
+      $obj = islandora_object_load($pid);
+    }
+  }
+  if ($obj instanceof AbstractObject) {
+    if (isset($obj["PBCORE"])) {
+      include_once($data['patch_file']);
+      $method = $data['patch_method'];
+      $pbcore_original = $obj["PBCORE"]->content;
+      $patched = call_user_func_array($method, [$pbcore_original, $obj]);
+      if (is_string($patched)) {
+        drush_log("Patched PBCore is {$patched}", "debugnotify");
+        if (strcmp($pbcore_original, $patched) !== 0) {
+          drush_log("Patching object {$pid}", "ok");
+          $obj["PBCORE"]->content = $patched;
+        }
+        else {
+          drush_log("Object {$pid} not changed, skipping", "ok");
+        }
+        return TRUE;
+      }
+      else {
+        drush_log("Object {$pid}: Returned PBCore was not a string.", "warning");
+        return FALSE;
+      }
+    }
+  }
+}

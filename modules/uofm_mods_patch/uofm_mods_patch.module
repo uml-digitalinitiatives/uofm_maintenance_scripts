@@ -1,4 +1,7 @@
 <?php
+/**
+ * @file MODS patching functions
+ */
 
 const UOFM_MODS_PATCH_TOKEN = "%UOFM_MODS_PATCH_TOKEN%";
 
