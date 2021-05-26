@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * Custom queue builder.
+ * @param string $pid the PID to process.
+ * @return array the queue data.
+ */
+function uofm_xml_patch_custom_queue($pid) {
+  $patch_file = &drupal_static(__FUNCTION__ . "_file");
+  $patch_method = &drupal_static(__FUNCTION__ . "_method");
+  if (!isset($patch_file)) {
+    $patch_file = drush_get_option("patch_file", NULL);
+  }
+  if (!isset($patch_method)) {
+    $patch_method = drush_get_option("patch_method", NULL);
+  }
+  drush_log("patch_file {$patch_file}, patch_method {$patch_method}", "debugnotify");
+
+  return [
+    "patch_file" => $patch_file,
+    "patch_method" => $patch_method,
+    "pid" => $pid,
+  ];
+}

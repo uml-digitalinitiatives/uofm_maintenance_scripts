@@ -3,29 +3,6 @@
 const UOFM_MODS_PATCH_TOKEN = "%UOFM_MODS_PATCH_TOKEN%";
 
 /**
- * Custom queue builder.
- * @param string $pid the PID to process.
- * @return array the queue data.
- */
-function uofm_mods_patch_custom($pid) {
-  $patch_file = &drupal_static(__FUNCTION__ . "_file");
-  $patch_method = &drupal_static(__FUNCTION__ . "_method");
-  if (!isset($patch_file)) {
-    $patch_file = drush_get_option("patch_file", NULL);
-  }
-  if (!isset($patch_method)) {
-    $patch_method = drush_get_option("patch_method", NULL);
-  }
-  drush_log("patch_file {$patch_file}, patch_method {$patch_method}", "debugnotify");
-
-  return [
-    "patch_file" => $patch_file,
-    "patch_method" => $patch_method,
-    "pid" => $pid,
-  ];
-}
-
-/**
  * Worker to perform the mods patching.
  * @param array $data queue data.
  * @return bool true if MODS is patched.
