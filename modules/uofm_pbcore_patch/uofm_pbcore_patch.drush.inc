@@ -1,7 +1,6 @@
 <?php
 
-const UOFM_PBCORE_PATCH_FAKE_PBCORE = "<?xml version=\"1.0\"?>\n<pbcoreDescriptionDocument xmlns=\"http://www.pbcore.org/PBCore/PBCoreNamespace.html\" xmlns:pb=\"http://www.pbcore.org/PBCore/PBCoreNamespace.html\">\n<pbcoreTitle>Example Title</pbcoreTitle></pbcoreDescriptionDocument>
-";
+const UOFM_PBCORE_PATCH_FAKE_PBCORE = "<?xml version=\"1.0\"?>\n<pbcoreDescriptionDocument xmlns=\"http://www.pbcore.org/PBCore/PBCoreNamespace.html\" xmlns:pb=\"http://www.pbcore.org/PBCore/PBCoreNamespace.html\">\n<pbcoreTitle>Example Title</pbcoreTitle></pbcoreDescriptionDocument>";
 
 const UOFM_PBCORE_PATCH_QUEUE = "uofm_pbcore_patch_queue";
 
