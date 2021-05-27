@@ -3,6 +3,4 @@ description = "A drush script to execute a PBCore patch against a set of Islando
 package = Islandora Local Customization
 version = 7.x-dev
 core = 7.x
-dependencies[] = uofm_maintenance
-dependencies[] = manidora
-dependencies[] = xautoload (>= 7.x-5.0)
+dependencies[] = uofm_xml_patch

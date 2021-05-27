@@ -4,5 +4,3 @@ package = Islandora Local Customization
 version = 7.x-dev
 core = 7.x
 dependencies[] = uofm_xml_patch
-dependencies[] = manidora
-dependencies[] = xautoload (>= 7.x-5.0)
