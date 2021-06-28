@@ -1,0 +1,7 @@
+name = "UofM FITS regeneration"
+description = "A drush script to regenerate FITS datastreams on Islandora 7 objects"
+package = Islandora Local Customization
+version = 7.x-dev
+core = 7.x
+dependencies[] = uofm_maintenance
+dependencies[] = islandora_fits
