@@ -26,9 +26,6 @@ function uofm_regen_fits_drush_command() {
       'recursive' => array(
         'description' => 'Process any children of the objects listed/queried',
       ),
-      'force' => array(
-        'description' => 'Force indexing even if already in Solr, CAREFUL this could re-index ALOT of stuff.',
-      ),
     ),
     'aliases' => array('uofm_regen_fits_pp'),
     'callback' => 'drush_uofm_maintenance_preprocess',
@@ -50,7 +47,7 @@ function uofm_regen_fits_drush_command() {
     'aliases' => array('uofm_regen_fits_run'),
     'callback' => 'drush_uofm_maintenance_run',
     'callback arguments' => array(
-      'uofm_maintenance_regen_fits_worker',
+      'uofm_regen_fits_worker',
       'uofm_maintenance_regenerate_fits',
       'uofm_maintenance_regenerate_fits',
       300,
