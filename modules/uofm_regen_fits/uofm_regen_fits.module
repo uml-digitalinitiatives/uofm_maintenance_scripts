@@ -1,0 +1,45 @@
+<?php
+/**
+ * @file Worker function.
+ */
+
+/**
+ * Regenerate FITS derivative from OBJ.
+ *
+ * @param string|AbstractObject $object
+ *   the string PID or a Fedora Object
+ * @return bool
+ *   True if run successful, false otherwise.
+ */
+function uofm_regen_fits_worker($object) {
+  $obj = FALSE;
+  if (is_string($object)) {
+    module_load_include('inc', 'islandora', 'includes/utilities');
+    if (islandora_is_valid_pid($object)) {
+      $obj = islandora_object_load($object);
+    }
+  }
+  if (is_a($object, 'AbstractObject')) {
+    $obj = $object;
+  }
+  $outcome = FALSE;
+  if (isset($obj['OBJ'])) {
+    module_load_include('inc', 'islandora_fits', 'includes/derivatives');
+    drush_log("Regenerate FITS for " . $obj->id, "ok");
+    $result = islandora_fits_create_techmd($obj, TRUE, array('source_dsid' => 'OBJ'));
+    if (is_array($result) && array_key_exists('success', $result) && $result['success'] === TRUE) {
+      $outcome = TRUE;
+    }
+    else if (is_array($result['messages']) && count($result['messages']) > 0) {
+      $message = array_pop($result['messages']);
+      watchdog('uofm_regen_fits', $message['message'], (isset($message['message_sub']) ? $message['message_sub'] : []), $message['severity']);
+    }
+    else {
+      watchdog('uofm_regen_fits', 'Object @pid failed for unknown reason', ['@obj' => $obj->id], WATCHDOG_ERROR);
+    }
+  }
+  else {
+    watchdog('uofm_regen_fits', 'No OBJ datastream present for object @pid', ['@obj' => $obj->id], WATCHDOG_ERROR);
+  }
+  return $outcome;
+}
