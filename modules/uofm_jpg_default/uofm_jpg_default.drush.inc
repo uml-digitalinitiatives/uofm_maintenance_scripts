@@ -25,7 +25,7 @@ function uofm_jpg_default_drush_command() {
     ),
     'callback' => 'drush_uofm_maintenance_preprocess',
     'callback arguments' => array(
-      UOFM_JPG_DEFAULT_QUEUE_NAME,
+      "uofm_jpg_default_queue",
       FALSE,
       NULL,
     ),
