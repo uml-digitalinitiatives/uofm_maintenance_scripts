@@ -45,7 +45,7 @@ function uofm_xml_patch_custom_queue($pid) {
  *   The patched MODS.
  */
 function uofm_xml_patch_transform_dc(AbstractObject $object, string $transform, string $updated_metadata) {
-  drush_log("Updating DC for !p", ['!p' => $object->id]);
+  drush_log("Updating DC for {$object->id}", "ok");
   // We only use this transform, so I'm cheating.
   $document = new DOMDocument();
   $document->loadXML($updated_metadata);
