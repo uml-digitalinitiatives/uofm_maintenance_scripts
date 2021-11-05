@@ -28,16 +28,19 @@ function uofm_pbcore_patch_worker(array $data) {
         if (strcmp($pbcore_original, $patched) !== 0) {
           drush_log("Patching object {$pid}", "ok");
           $obj["PBCORE"]->content = $patched;
+          if ($data['update_dc']) {
+            uofm_xml_patch_transform_dc($obj, 'pbcore_to_dc.xslt', $patched);
+          }
+          return TRUE;
         }
         else {
           drush_log("Object {$pid} not changed, skipping", "ok");
         }
-        return TRUE;
       }
       else {
         drush_log("Object {$pid}: Returned PBCore was not a string.", "warning");
-        return FALSE;
       }
     }
   }
+  return FALSE;
 }

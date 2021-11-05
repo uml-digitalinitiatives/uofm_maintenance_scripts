@@ -30,18 +30,21 @@ function uofm_mods_patch_worker(array $data) {
         if (strcmp($mods_original, $patched) !== 0) {
           drush_log("Patching object {$pid}", "ok");
           $obj["MODS"]->content = $patched;
+          if ($data['update_dc']) {
+            uofm_xml_patch_transform_dc($obj, 'mods_to_dc.xslt', $patched);
+          }
+          return TRUE;
         }
-        else {
+      else {
           drush_log("Object {$pid} not changed, skipping", "ok");
         }
-        return TRUE;
       }
       else {
         drush_log("Object {$pid}: Returned MODS was not a string.", "warning");
-        return FALSE;
       }
     }
   }
+  return FALSE;
 }
 
 /**

@@ -19,6 +19,9 @@ function uofm_pbcore_patch_drush_command() {
       'query' => array(
         'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
       ),
+      'dont_update_dc' => array(
+        'description' => "Don't update the DC when updating MODS (requires islandora_xml_forms)",
+      ),
       'patch_file' => array(
         'description' => 'File which defines a function to use when patching',
         'required' => TRUE,

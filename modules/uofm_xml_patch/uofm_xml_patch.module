@@ -8,17 +8,40 @@
 function uofm_xml_patch_custom_queue($pid) {
   $patch_file = &drupal_static(__FUNCTION__ . "_file");
   $patch_method = &drupal_static(__FUNCTION__ . "_method");
+  $update_dc = &drupal_static(__FUNCTION__ . "_update_dc");
   if (!isset($patch_file)) {
     $patch_file = drush_get_option("patch_file", NULL);
   }
   if (!isset($patch_method)) {
     $patch_method = drush_get_option("patch_method", NULL);
   }
+  if (!isset($update_dc)) {
+    $update_dc = module_exists('islandora_xml_forms') &&
+      is_null(drush_get_option("dont_update_dc", NULL));
+  }
   drush_log("patch_file {$patch_file}, patch_method {$patch_method}", "debugnotify");
 
   return [
     "patch_file" => $patch_file,
     "patch_method" => $patch_method,
+    "update_dc" => $update_dc,
     "pid" => $pid,
   ];
+}
+
+/**
+ * Update DC datastream after MODS.
+ * @param \AbstractObject $object
+ *   The object we are updating.
+ * @param string $transform
+ *   The transform to use when converting to DC.
+ * @param string $updated_metadata
+ *   The patched MODS.
+ */
+function uofm_xml_patch_transform_dc(AbstractObject $object, string $transform, string $updated_metadata) {
+  drush_log("Updating DC for !p", ['!p' => $object->id]);
+  // We only use this transform, so I'm cheating.
+  $document = new DOMDocument();
+  $document->loadXML($updated_metadata);
+  $created = xml_form_builder_update_dc_datastream($object, $transform, $document);
 }
