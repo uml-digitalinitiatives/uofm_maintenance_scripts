@@ -22,6 +22,9 @@ function uofm_mods_patch_drush_command() {
       'dont_update_dc' => array(
         'description' => "Don't update the DC when updating MODS (requires islandora_xml_forms)",
       ),
+      'force_update_dc' => array(
+        'description' => "Update the DC datastream with the MODS even if the MODS has not changed (requires islandora_xml_forms)",
+      ),
       'patch_file' => array(
         'description' => 'File which defines a function to use when patching',
         'required' => TRUE,

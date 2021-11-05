@@ -37,6 +37,9 @@ function uofm_mods_patch_worker(array $data) {
         }
       else {
           drush_log("Object {$pid} not changed, skipping", "ok");
+          if ($data['force_update_dc']) {
+            uofm_xml_patch_transform_dc($obj, 'mods_to_dc.xslt', $patched);
+          }
         }
       }
       else {

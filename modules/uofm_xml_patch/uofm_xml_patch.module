@@ -9,6 +9,7 @@ function uofm_xml_patch_custom_queue($pid) {
   $patch_file = &drupal_static(__FUNCTION__ . "_file");
   $patch_method = &drupal_static(__FUNCTION__ . "_method");
   $update_dc = &drupal_static(__FUNCTION__ . "_update_dc");
+  $force_dc = &drupal_static(__FUNCTION__ . '_force_dc');
   if (!isset($patch_file)) {
     $patch_file = drush_get_option("patch_file", NULL);
   }
@@ -19,12 +20,17 @@ function uofm_xml_patch_custom_queue($pid) {
     $update_dc = module_exists('islandora_xml_forms') &&
       is_null(drush_get_option("dont_update_dc", NULL));
   }
+  if (!isset($force_dc)) {
+    $force_dc = module_exists('islandora_xml_forms') &&
+      !is_null(drush_get_option("force_update_dc", NULL));
+  }
   drush_log("patch_file {$patch_file}, patch_method {$patch_method}", "debugnotify");
 
   return [
     "patch_file" => $patch_file,
     "patch_method" => $patch_method,
     "update_dc" => $update_dc,
+    "force_update_dc" => $force_dc,
     "pid" => $pid,
   ];
 }
