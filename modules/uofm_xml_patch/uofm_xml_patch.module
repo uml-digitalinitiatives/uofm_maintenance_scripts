@@ -17,11 +17,11 @@ function uofm_xml_patch_custom_queue($pid) {
     $patch_method = drush_get_option("patch_method", NULL);
   }
   if (!isset($update_dc)) {
-    $update_dc = module_exists('islandora_xml_forms') &&
+    $update_dc = module_exists('xml_form_builder') &&
       is_null(drush_get_option("dont_update_dc", NULL));
   }
   if (!isset($force_dc)) {
-    $force_dc = module_exists('islandora_xml_forms') &&
+    $force_dc = module_exists('xml_form_builder') &&
       !is_null(drush_get_option("force_update_dc", NULL));
   }
   drush_log("patch_file {$patch_file}, patch_method {$patch_method}", "debugnotify");
