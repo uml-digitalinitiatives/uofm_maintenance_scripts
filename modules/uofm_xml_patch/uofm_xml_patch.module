@@ -24,7 +24,7 @@ function uofm_xml_patch_custom_queue($pid) {
     $force_dc = module_exists('xml_form_builder') &&
       !is_null(drush_get_option("force_update_dc", NULL));
   }
-  drush_log("patch_file {$patch_file}, patch_method {$patch_method}", "debugnotify");
+  drush_log("patch_file {$patch_file}, patch_method {$patch_method}, update_dc ".($update_dc ? 'yes':'no').", force_update_dc ".($force_dc ? 'yes':'no'));
 
   return [
     "patch_file" => $patch_file,

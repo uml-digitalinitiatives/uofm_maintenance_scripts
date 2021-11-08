@@ -5,6 +5,8 @@
 
 const UOFM_MODS_PATCH_TOKEN = "%UOFM_MODS_PATCH_TOKEN%";
 
+const UOFM_MODS_PATCH_DC_TRANSFORM = "mods_to_dc.xsl";
+
 /**
  * Worker to perform the mods patching.
  * @param array $data queue data.
@@ -31,13 +33,13 @@ function uofm_mods_patch_worker(array $data) {
           drush_log("Patching object {$pid}", "ok");
           $obj["MODS"]->content = $patched;
           if ($data['update_dc']) {
-            uofm_xml_patch_transform_dc($obj, 'mods_to_dc.xslt', $patched);
+            uofm_xml_patch_transform_dc($obj, UOFM_MODS_PATCH_DC_TRANSFORM, $patched);
           }
         }
         else {
           drush_log("Object {$pid} not changed, skipping", "ok");
           if ($data['force_update_dc']) {
-            uofm_xml_patch_transform_dc($obj, 'mods_to_dc.xslt', $patched);
+            uofm_xml_patch_transform_dc($obj, UOFM_MODS_PATCH_DC_TRANSFORM, $patched);
           }
         }
         return TRUE;
