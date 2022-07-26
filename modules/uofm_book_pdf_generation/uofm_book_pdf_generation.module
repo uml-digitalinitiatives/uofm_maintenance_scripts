@@ -1,0 +1,95 @@
+<?php
+
+const UOFM_BOOK_PDF_GENERATION_VALID_CMODELS = ['islandora:bookCModel', 'islandora:newspaperIssueCModel'];
+
+function uofm_book_pdf_generation_worker($paged_content_pid) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  if (islandora_is_valid_pid($paged_content_pid)) {
+    $paged_content = islandora_object_load($paged_content_pid);
+    if ($paged_content !== FALSE) {
+      // We only work on books and newspaper issues so far.
+      if (count(array_intersect(UOFM_BOOK_PDF_GENERATION_VALID_CMODELS, $paged_content->models)) > 0) {
+        module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+        $pdf_file = drupal_realpath("temporary://{$paged_content->id}_PDF.pdf");
+        $pages = array_keys(islandora_paged_content_get_pages($paged_content));
+        $page_count = count($pages);
+        $page_files = [];
+        $options = array(
+          '-density' => 300,
+          '-compress' => 'LZW',
+        );
+        foreach ($pages as $page) {
+          $page_files[] = uofm_book_pdf_generation_do_page($page, $options);
+          if (end($page_files) === FALSE) {
+            drush_log("Unable to generate a PDF file for $page", "error");
+          }
+        }
+        $real_count = count(array_filter($page_files, function ($v) {
+          return !is_bool($v);
+        }));
+        if ($real_count !== $page_count) {
+          // We did not make all the pages we need.
+          drush_log("Page count $real_count does not match expected $page_count. Exiting without generating consolidated PDF", "error");
+          return TRUE;
+        }
+        // Start the loop below so we always increment before processing.
+        $progress = -10;
+        // Process return values so we can halt if some of the appending fails.
+        $ret = TRUE;
+        while ($progress < $page_count && $ret === TRUE) {
+          $progress += 10;
+          $current_pages = array_slice($page_files, $progress, 10);
+          if ($progress !== 0) {
+            $ret = islandora_paged_content_pdf_append($pdf_file, $current_pages);
+          }
+          else {
+            $ret = islandora_paged_content_pdf_combine($current_pages, $pdf_file);
+          }
+        }
+        if ($ret === TRUE) {
+          // We completed and still returned TRUE, so the PDF is valid.
+          islandora_paged_content_update_datastream($paged_content, $pdf_file, 'PDF');
+        }
+        // Clean up, remove all the pdf files.
+        file_unmanaged_delete($pdf_file);
+        foreach ($page_files as $file) {
+          file_unmanaged_delete($file);
+        }
+        return $ret;
+      }
+      else {
+        drush_log("We can only operate on objects of type islandora:bookCModel and islandora:newspaperIssueCModel");
+        return TRUE;
+      }
+    }
+    else {
+      drush_log("Unable to load object for pid $paged_content_pid", "error");
+    }
+  }
+  else {
+    drush_log("PID $paged_content_pid is not valid", "error");
+    return TRUE;
+  }
+  return FALSE;
+}
+
+function uofm_book_pdf_generation_do_page($pid, $options) {
+  $page = islandora_object_load($pid);
+  $skip = !is_null(drush_get_option('skip_pages', NULL));
+  if ($skip === FALSE || !isset($page['PDF'])) {
+    $pdf_file = islandora_paged_content_page_derive_pdf($page, $options);
+    if ($pdf_file !== FALSE) {
+      // Only update if the PDF was correctly derived.
+      islandora_paged_content_update_datastream($page, $pdf_file, 'PDF');
+    }
+  }
+  else {
+    // There is already a PDF and we are skipping, so just get the existing PDF datastream.
+    $pdf_file = drupal_tempnam('temporary://', "page_$pid.pdf");
+    $ret = $page['PDF']->getContent($pdf_file);
+    if ($ret === FALSE) {
+      return FALSE;
+    }
+  }
+  return $pdf_file;
+}
