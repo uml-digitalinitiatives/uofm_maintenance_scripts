@@ -28,6 +28,8 @@ function uofm_book_pdf_generation_drush_command() {
       'callback' => 'drush_uofm_maintenance_preprocess',
       'callback arguments' => array(
         UOFM_BOOK_PDF_GENERATION_QUEUE,
+        FALSE,
+        'uofm_book_pdf_generation_queue_builder',
       ),
       'description' => 'Add items to the queue to be have a PDF generated.',
       'drupal dependencies' => array(
