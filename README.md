@@ -63,7 +63,7 @@ This is the drush command to preprocess a PID, comma separated list of PIDs, fil
       UOFM_MAINTENANCE_FIX_TIFFS_QUEUE,
       // Whether to filter out PIDs that are already in the Solr Index
       FALSE,
-      // A function name to generate your queue items, defaults to adding the PID as the queue data.
+      // A function name to generate your queue items or FALSE to just store the PID, defaults to adding the PID as the queue data.
       // The function takes a single queue and returns the object/array/etc to add to the queue.
       'uofm_maintenance_custom_queue_maker',
     ),
@@ -111,19 +111,15 @@ CURRENT FUNCTIONALITY
 1. uofm\_maintenance\_fix\_tif\_mimetype\_pp (uofm\_fix\_mt\_pp) and uofm\_maintenance\_fix\_tif\_mimetype\_run (uofm\_fix\_mt\_run)
 
    Check the resources for OBJ or TIFF datastreams with a *image/tif* mime-type and change it to *image/tiff*.
-2. uofm\_maintenance\_regen\_jp2\_pp (uofm\_regen\_jp2\_pp) and uofm\_maintenance\_regen\_jp2\_run (uofm\_regen\_jp2\_run)
-
-   Force the regeneration of the JP2 datastream for all PIDs on the queue.
-3. uofm\_maintenance\_batch\_index\_jms
-
-   Place an update message on the JMS queue for all PIDs loaded. These will be re-indexed via Gsearch, allows for multi-threaded reindexing.  
-   Requires [uofm-camel-route](https://github.com/uml-digitalinitiatives/uofm-camel-route)  
-4. uofm\_maintenance\_derivative\_fixer\_pp (uofm\_dfp) and uofm\_maintenance\_derivative\_fixer\_run (uofm\_dfr)
+  
+2. uofm\_maintenance\_derivative\_fixer\_pp (uofm\_dfp) and uofm\_maintenance\_derivative\_fixer\_run (uofm\_dfr)
 
    Create any missing derivatives for the list of loaded PIDs.
-5. uofm\_maintenance\_update\_parent\_pp and uofm\_maintenance\_update\_parent\_run
+3. uofm\_maintenance\_update\_parent\_pp and uofm\_maintenance\_update\_parent\_run
 
    Add/Replace a relationship to a group of objects (PIDs), used mostly for moving a group of resources from one collection or parent to another.
-6. uofm\_maintenance\_copy\_xacml\_pp and uofm\_maintenance\_copy\_xacml\_run
+4. uofm\_maintenance\_copy\_xacml\_pp and uofm\_maintenance\_copy\_xacml\_run
 
    Copy the XACML policy from a resource to a group of resources. Useful to propogate XACML through large collections as the query for members can be done once and stored as a list of PIDs.
+
+See modules directory for more functions.

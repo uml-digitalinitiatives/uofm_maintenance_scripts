@@ -1,38 +1,26 @@
 ## Overview
 
-This script generates a JSON listing of objects inside a collection
+This script generates a JSON listing of objects inside a collection with each objects:
+- PID
+- Models
+- Local ID (if defined in the MODS)
+- Relationships (if one of)
+  - 'isPartOf', 'isConstituentOf', 'isMemberOf', 'isMemberOfCollection'
 
 ## Usage
 
-The command is `uofm_batch_index_jms` or `uofm_bi_jms`.
+The command is `uofm_archives_scan` or `uofm_arch_scan`.
 
 **Note**: Unlike other tools in this package this does not have a two step process. It begins
 immediately.
  
-To submit PIDs to be indexed/reindexed you must also provide one of the following options. 
+To submit PIDs to be indexed/reindexed you must also provide a collection PID to operate on using
+the `--pid` argument and an output file to store the JSON in using the `--output` argument.
 
-* `--query` - Provide a SPARQL where clause, uses "?object" as the returned variable.
-* `--pid` - A PID to operate on
-* `--pidlist` - A comma seperated list of PIDs to operate on
-* `--pidfile` - Path to a textfile of PIDs to operate on, one per line
-
-Additional options:
-
-`--force`
-
-This will reindex an object even if it exists in the Solr index. 
-
-**Be careful** this option could cause a lot of reindexing to occur.
-
-`--recursive`
-
-This option will search for children of the object being re-indexed using `isMemberOf`, `isMemberOfCollection`,
-and `isConsituentOf` relationships.
-
-## Configuration
-
-The base URL used to submit the PID to be reindexed against is the constant `UOFM_BATCH_INDEX_REINDEX_URL` defined
-in the `uofm_batch_index.drush.inc` file.
+An example run _might_ look like
+```shell
+> drush -r /path/to/drupal uofm_archives_scan --pid=islandora:bookCollection --output=/full/path/to/output.json
+```
 
 ## Credit
 

@@ -1,47 +1,59 @@
 <?php
-/**
- * @file
- * Drush commands.
- */
+
+const UOFM_AGGREGATE_PDFS_QUEUE = "uofm_aggregate_pdfs_queue";
+
+const UOFM_AGGREGATE_PDFS_TIMER = "uofm_aggregate_pdfs_timer";
 
 function uofm_aggregate_pdfs_drush_command() {
-  $items = array();
-
-  $items['uofm_aggregate_pdfs'] = array(
-    'options' => array(
-      'pid' => array(
-        'description' => 'A PID to operate on',
+  return [
+    'uofm_aggregate_pdfs_preprocess' => [
+      'options' => array(
+        'pid' => array(
+          'description' => 'A PID to operate on',
+        ),
+        'pidlist' => array(
+          'description' => 'A comma seperated list of PIDs to operate on',
+        ),
+        'pidfile' => array(
+          'description' => 'Path to a textfile of PIDs to operate on, one per line',
+        ),
+        'query' => array(
+          'description' => 'The SPARQL where clause, uses "?object" as the returned variable.',
+        ),
+        'skip_pages' => array(
+          'description' => 'Don\'t regenerate PDFs for pages that already have one.',
+        )
       ),
-      'pidlist' => array(
-        'description' => 'A comma seperated list of PIDs to operate on',
+      'aliases' => ['uofm_agg_pdfs_pp'],
+      'callback' => 'drush_uofm_maintenance_preprocess',
+      'callback arguments' => array(
+        UOFM_AGGREGATE_PDFS_QUEUE,
+        FALSE,
+        'uofm_aggregate_pdfs_queue_builder',
       ),
-      'pidfile' => array(
-        'description' => 'Path to a textfile of PIDs to operate on, one per line',
+      'description' => 'Add items to the queue to be have a PDF generated.',
+      'drupal dependencies' => array(
+        'islandora',
       ),
-    ),
-    'aliases' => array('uofm_agg_pdf'),
-    'callback' => 'drush_uofm_aggregate_pdfs_process',
-    'callback arguments' => array(TRUE),
-    'description' => 'Create a PDF out of the PDFs on all pages of a book or newspaper',
-    'drupal dependencies' => array(
-      'islandora',
-      'islandora_paged_content',
-      'uofm_aggregate_pdfs',
-    ),
-    'category' => 'uofm_maintenance_scripts',
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
-  );
-  return $items;
-}
-
-function drush_uofm_aggregate_pdfs_process() {
-  $results = drush_uofm_maintenance_load_options();
-  if ($results === false) {
-    // We failed, exit now.
-    return;
-  }
-  foreach ($results as $result) {
-    $outcome = (uofm_aggregate_pdfs_generate($result) ? "ok" : "error");
-    drush_log("Processing {$result}", $outcome);
-  }
+      'category' => 'uofm_maintenance_scripts',
+      'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+    ],
+    'uofm_aggregate_pdfs_run' => [
+      'callback' => 'drush_uofm_maintenance_run',
+      'callback arguments' => array(
+        'uofm_aggregate_pdfs_worker',
+        UOFM_AGGREGATE_PDFS_QUEUE,
+        UOFM_AGGREGATE_PDFS_TIMER,
+        300,
+      ),
+      'description' => 'Process the queue of objects generated with uofm_aggregate_pdfs_preprocess',
+      'drupal dependencies' => array(
+        'islandora',
+        'uofm_aggregate_pdfs'
+      ),
+      'aliases' => ['uofm_agg_pdfs_run'],
+      'category' => 'uofm_maintenance_scripts',
+      'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+    ],
+  ];
 }

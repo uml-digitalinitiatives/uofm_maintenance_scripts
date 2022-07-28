@@ -1,8 +1,7 @@
-name = "UofM Aggregate PDFs"
-description = "A drush script to generate/regenerate PDFs for paged content model items from their members.
+name = "UofM PDF paged content generation"
+description = "A drush script to generate the book level PDFs for a bunch of books/newspapers."
 package = Islandora Local Customization
 version = 7.x-dev
 core = 7.x
-dependencies[] = islandora
-dependencies[] = uofm_maintenance
+dependencies[] = uofm_xml_patch
 dependencies[] = islandora_paged_content
