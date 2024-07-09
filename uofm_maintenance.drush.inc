@@ -298,43 +298,38 @@ function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE, $custom
  * Do the default option parsing and return an array of pids or False on error.
  */
 function drush_uofm_maintenance_load_options() {
-  $choices = (drush_get_option('query', NULL) ?? 0) +
-    (drush_get_option('pid', NULL) ?? 0) +
-    (drush_get_option('pidlist', NULL) ?? 0) +
-    (drush_get_option('pidfile', NULL) ?? 0);
-  if ($choices == 0) {
-    drush_set_error("You must set one of the options 'pid', 'pidlist, 'pidfile' or 'query'.");
-    return false;
-  }
-  elseif ($choices > 1) {
-    drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
-    return false;
-  }
-
+  $results = [];
   if (!is_null(drush_get_option('query', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'query',
       'value' => drush_get_option('query', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pid', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'single',
       'value' => drush_get_option('pid', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pidlist', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'list',
       'value' => drush_get_option('pidlist', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pidfile', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'file',
       'value' => drush_get_option('pidfile', ''),
     ));
   }
+  if (count($results) == 0) {
+    drush_set_error("You must set one of the options 'pid', 'pidlist', 'pidfile' or 'query'.");
+  }
+  elseif (count($results) > 1) {
+    drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
+  }
+  $results = $results[0];
   if (!is_array($results)) {
     if ($results == -8) {
       drush_set_error("File does not exist.");

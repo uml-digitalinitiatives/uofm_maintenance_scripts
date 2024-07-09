@@ -63,42 +63,40 @@ function drush_uofm_batch_index_process($filter = TRUE) {
   module_load_include('inc', 'islandora', 'includes/utilities');
   module_load_include('inc', 'uofm_maintenance', 'includes/utilities');
 
-  $choices = (drush_get_option('query', NULL) ?? 0) +
-    (drush_get_option('pid', NULL) ?? 0) +
-    (drush_get_option('pidlist', NULL) ?? 0) +
-    (drush_get_option('pidfile', NULL) ?? 0);
-  if ($choices == 0) {
-    drush_set_error("You must set one of the options 'pid', 'pidlist', 'pidfile' or 'query'.");
-  }
-  elseif ($choices > 1) {
-    drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
-  }
   $force = (!is_null(drush_get_option('force', NULL)));
   $recursive = (!is_null(drush_get_option('recursive', NULL)));
+  $results = [];
   if (!is_null(drush_get_option('query', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'query',
       'value' => drush_get_option('query', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pid', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'single',
       'value' => drush_get_option('pid', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pidlist', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'list',
       'value' => drush_get_option('pidlist', ''),
     ));
   }
   elseif (!is_null(drush_get_option('pidfile', NULL))) {
-    $results = uofm_maintenance_load_pids(array(
+    $results[] = uofm_maintenance_load_pids(array(
       'type' => 'file',
       'value' => drush_get_option('pidfile', ''),
     ));
   }
+  if (count($results) == 0) {
+    drush_set_error("You must set one of the options 'pid', 'pidlist', 'pidfile' or 'query'.");
+  }
+  elseif (count($results) > 1) {
+    drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
+  }
+  $results = $results[0];
   if (!is_array($results)) {
     if ($results == -8) {
       drush_set_error("File does not exist.");
