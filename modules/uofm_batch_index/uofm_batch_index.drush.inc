@@ -10,7 +10,7 @@
  *
  * Base URL for reindexing.
  */
-define('UOFM_BATCH_INDEX_REINDEX_URL', 'http://localhost:9111/fedora3-solr-indexer/reindex/');
+const UOFM_BATCH_INDEX_REINDEX_URL = 'http://localhost:9111/fedora3-solr-indexer/reindex/';
 
 /**
  * Implements hook_drush_command().
@@ -63,18 +63,18 @@ function drush_uofm_batch_index_process($filter = TRUE) {
   module_load_include('inc', 'islandora', 'includes/utilities');
   module_load_include('inc', 'uofm_maintenance', 'includes/utilities');
 
-  $choices = (strlen(drush_get_option('query', '')) > 0 ? 1 : 0 +
-  strlen(drush_get_option('pid', '')) > 0 ? 1 : 0 +
-  strlen(drush_get_option('pidlist', '')) > 0 ? 1 : 0 +
-  strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
+  $choices = (drush_get_option('query', NULL) ?? 0) +
+    (drush_get_option('pid', NULL) ?? 0) +
+    (drush_get_option('pidlist', NULL) ?? 0) +
+    (drush_get_option('pidfile', NULL) ?? 0);
   if ($choices == 0) {
     drush_set_error("You must set one of the options 'pid', 'pidlist', 'pidfile' or 'query'.");
   }
   elseif ($choices > 1) {
     drush_set_error("You can only use ONE of the options 'pid', 'pidlist', 'pidfile' or 'query' at a time.");
   }
-  $force = (bool) (!is_null(drush_get_option('force', NULL)));
-  $recursive = (bool) (!is_null(drush_get_option('recursive', NULL)));
+  $force = (!is_null(drush_get_option('force', NULL)));
+  $recursive = (!is_null(drush_get_option('recursive', NULL)));
   if (!is_null(drush_get_option('query', NULL))) {
     $results = uofm_maintenance_load_pids(array(
       'type' => 'query',
@@ -130,7 +130,7 @@ function drush_uofm_batch_index_process($filter = TRUE) {
           curl_setopt($ch, CURLOPT_USERPWD, "$user:$passwd");
           $result = curl_exec($ch);
           curl_close($ch);
-          $r = preg_match("~HTTP/1.1 200 OK~", $result);
+          $r = preg_match("~HTTP/1.1 204 No Content~", $result);
           if (!$r) {
             drush_log(t("Problem adding item (@p) to JMS queue", array('@p' => $obj)), "error");
           }
@@ -139,7 +139,7 @@ function drush_uofm_batch_index_process($filter = TRUE) {
           }
         }
       }
-      drush_log("Added $count items to the JMS queue", 'ok');
+      drush_log("Reindexed $count item(s)", 'ok');
     #}
   }
 }
