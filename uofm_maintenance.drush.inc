@@ -298,10 +298,10 @@ function drush_uofm_maintenance_preprocess($queue_name, $filter = FALSE, $custom
  * Do the default option parsing and return an array of pids or False on error.
  */
 function drush_uofm_maintenance_load_options() {
-  $choices = (strlen(drush_get_option('query', '')) > 0 ? 1 : 0 +
-  strlen(drush_get_option('pid', '')) > 0 ? 1 : 0 +
-  strlen(drush_get_option('pidlist', '')) > 0 ? 1 : 0 +
-  strlen(drush_get_option('pidfile', '')) > 0 ? 1 : 0);
+  $choices = (drush_get_option('query', NULL) ?? 0) +
+    (drush_get_option('pid', NULL) ?? 0) +
+    (drush_get_option('pidlist', NULL) ?? 0) +
+    (drush_get_option('pidfile', NULL) ?? 0);
   if ($choices == 0) {
     drush_set_error("You must set one of the options 'pid', 'pidlist, 'pidfile' or 'query'.");
     return false;
